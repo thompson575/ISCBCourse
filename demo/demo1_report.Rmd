@@ -1,0 +1,120 @@
+---
+title: "ICU Stay after a Cardiac Arrest"
+author: "John Thompson"
+date: "25/02/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r echo = FALSE}
+library(tidyverse)
+
+clean_file <- "C:/Projects/RCourse/ISCB/data/rData/cardiac.rds"
+
+cardiacDF <- readRDS(clean_file)
+```
+
+# Background  
+
+The outcome of patients after sudden cardiac arrest (CA) remains poor, in particular because a large proportion of these patients will eventually die after hospital admission because of extensive brain damage and cardiogenic shock.
+
+In this analysis we look at the length of stay in ICU of cardiac arrest patients using data taken from,
+
+Iesu, E., Franchi, F., Zama Cavicchi, F., Pozzebon, S., Fontana, V., Mendoza, M., ... & Taccone, F. S. (2018).  
+**Acute liver dysfunction after cardiac arrest.**  
+PLoS One, 13(11), e0206655..   
+
+# Study Design
+
+This retrospective study was performed in the Department of Intensive Care at Erasme Hospital, Brussels (Belgium). All comatose patients (Glasgow Coma Scale, GCS < 9) admitted after in-hospital CA (IHCA) or OHCA were included in a prospective institutional database (January 2007 to December 2015) and considered as eligible for the study. Exclusion criteria were missing data on liver function or death less than 24 hours after ICU admission, because the occurrence of liver dysfunction could not be fully evaluated in these patients.
+
+# ICU Stay
+
+Figure 1 shows a histogram of the number of days in ICU for the 374 patients recruited into the study.
+
+```{r hist_stay}
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill="steelblue" ) +
+  labs( x     = "Days in ICU",
+        title = "Figure 1: Histogram of Length of Stay in ICU") 
+```
+
+Summary statistics show that the median stay in ICU was 4 days, range 1 day to 95 days.
+```{r summary_stay}
+cardiacDF %>%
+  summarise( n      = n(),
+             icuMED = median(icuStay),
+             icuMin = min(icuStay),
+             icuQ1  = quantile(icuStay, prob=0.25),
+             icuQ3  = quantile(icuStay, prob=0.75),
+             icuMax = max(icuStay))
+```
+
+# ICU Stay and Mortality
+
+Patients who died in hospital include many who died in the ICU unit and so they have a shorter average stay. Figure 2 shows histograms of ICU Stay for people who survived to discharge and those who died in hospital.  
+
+```{r hist_mortality}
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x = "Days in ICU",
+        title = "Figure 2: ICU Stay for Patients who Survived (0) and those that died in hospital (1)") +
+  facet_grid( hospDeath ~ .) 
+```
+
+Summary statistics show that the 57% of patients who dies in hospital had a median stay in ICU of 3 days compared with a median of 7 days for the 43% who survived to discharge.  
+
+```{r summary_stay}
+cardiacDF %>%
+  group_by( hospDeath) %>%
+  summarise( n      = n(),
+             icuMED = median(icuStay),
+             icuQ1  = quantile(icuStay, prob=0.25),
+             icuQ3  = quantile(icuStay, prob=0.75)) %>%
+  mutate( pct = 100 * n / sum(n)) %>%
+  select( hospDeath, n, pct, icuMED, icuQ1, icuQ3)
+```
+
+In a wilcoxon rank sum test the distributions of length of stay are shown to be significantly different for survivors and those that dies in hospital.
+
+```{r test_mortality}
+cardiacDF %>%
+  wilcox.test( icuStay ~ hospDeath, data = .)
+```
+
+# ICU Stay and Pre-existing CVD
+
+A score for pre-existing cardiovascular disease (CVD) was created and lenngth of stay in ICU was compared depending on mortality and this score. There is no evidence that pre-existing CVD influences length of stay.
+```{r summary_cvd}
+cardiacDF %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  group_by( hospDeath, cvd) %>%
+  summarise( n      = n(),
+             icuMED = median(icuStay),
+             icuQ1  = quantile(icuStay, prob=0.25),
+             icuQ3  = quantile(icuStay, prob=0.75))
+```
+
+# ISU Stay and RoSC
+
+The study recorded the time in minutes from the arrest to the return of spontaneous circulations (RoSC). Amongst people who survived to hospital discharge, those with a longer time to RoSC had a longer stay in ICU.
+```{r rosc}
+cardiacDF %>%
+  ggplot( aes(x = timeToRoscMin, y = icuStay)) +
+  geom_point( colour="steelblue" ) +
+  scale_y_log10() +
+  geom_smooth( method = "lm") +
+  labs( y = "Days in ICU") +
+  facet_grid( hospDeath ~ .) 
+```
+
+# Conclusion  
+
+In hospital mortality is high amongst patients who survive a cardiac arrest. The median stay in ICU for all patients is 4 days, though it is 7 days for patients who eventually survive to discharge. Pre-existing CVD has no obvious effect on ICY Stay, but amongst survivors to discharge a long time to RoSC is associated with a longer ICU stay.  
+
+

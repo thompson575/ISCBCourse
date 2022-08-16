@@ -1,0 +1,585 @@
+--- 
+title:  "Lecture 1: Outcomes after Cardiac Arrest"
+---
+
+<br>
+<br>
+
+# Introduction 
+
+<br>
+
+In this session, I will produce a complete data analysis in R, starting with data import and ending with a report. This will create a framework into which more complex use of the tidyverse can be slotted.
+
+My analysis will use data from the paper
+
+Iesu, E., Franchi, F., Zama Cavicchi, F., Pozzebon, S., Fontana, V., Mendoza, M., ... & Taccone, F. S. (2018).  
+**Acute liver dysfunction after cardiac arrest.**  
+PLoS One, 13(11), e0206655..   
+
+The paper can be found at https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0206655 and the authors have kindly made their data available by placing an Excel file in the dryad repository at  https://datadryad.org/stash/dataset/doi:10.5061/dryad.qv6fp83.  
+
+The study was conducted in the Department of Intensive Care at Erasme
+Hospital in Brussels. They recruited all patients who had a cardiac arrest either in or out of hospital between 2007 and 2015, provided that they survived for 24 hours after their arrest. Outcome for such patients is poor. Many die in the following weeks and others suffer either brain damage due to the lack of oxygen or reperfusion injury. The researchers collected a number of outcomes, but in their PLoS paper, they emphasised liver damage.  
+
+In the lecture I will cover the methods needed for the analysis. In particular,
+
+* Use of the pipe  
+* Importing data from an Excel file  
+* Data cleaning with `janitor`  
+* Saving data in `rds` format  
+* `dplyr` functions, select(), rename(), filter(), group_by() and summarise()    
+* Visualisation with `ggplot2`    
+* Creating an html report with `rmarkdown`  
+
+Then in the demonstration, I will use these methods to analyse the cardiac arrest data.  
+
+<br>
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# The Pipe
+
+<br>
+
+One of the big advantages of the tidyverse is that it makes it easy to write very readable code. This legibility is greatly enhanced by linking functions using the `pipe operator`.  
+
+Let's consider different ways of combining functions in R. Suppose that we need to transform data object x into data object y and that this involves using three functions. We could code this as,
+
+```{r eval=FALSE}
+a <- fun1(x)
+b <- fun2(a)
+y <- fun3(b)
+```
+
+Here the stages are explicit, but we are left with unwanted intermediate data objects a and b. If we code in this style, we will collect a great number of unwanted intermediates and eventually, we will need to de-clutter our workspace by deleting them.
+
+An alternative approach is to write the code as,
+
+```{r eval=FALSE}
+y <- fun3(fun2(fun1(x)))
+```
+
+Using this method the intermediates are not stored but the code is much more difficult to read and therefore much more error prone.
+
+The pipe, written `%>%`, enables us to avoid storing intermediates, while retaining legibility. Using this approach the code would be written
+
+```{r eval=FALSE}
+x %>%
+  fun1() %>%
+  fun2() %>%
+  fun3() -> y
+```
+
+We read this code as saying, start with the data object x, pipe or feed x into fun1(), take the result and pipe it into fun2(), then take the new result and pipe it into fun3(). Finally, the result is assigned to the data object named y. I've spread the code over several lines, this is not essential, but it is good practice because it improves legibility.
+
+Most people code the pipe with a left pointing arrow.
+```{r eval=FALSE}
+y <- x %>%
+       fun1() %>%
+       fun2() %>%
+       fun3()
+```
+
+I am in a small minority who find `<-` to be illogical and less easy to read, so I use `->` for assignment after a pipe. The result is the same whichever method you use.
+
+In a pipe, the input data object becomes the **first** argument of the next function, so
+
+```{r eval=FALSE}
+x %>%
+  fun1(y, z)  ->  w
+```
+
+is exactly equivalent to coding    
+
+```{r eval=FALSE}
+w <- fun1(x, y, z)
+```
+
+When the argument that you want to replace is not the first, you can force a different position by using a dot.
+
+```{r eval=FALSE}
+x %>%
+  fun1(y, ., z)  ->  w
+```
+
+is equivalent to
+
+```{r eval=FALSE}
+w <- fun1(y, x, z)
+```
+
+<br>
+
+### Extra information on the pipe
+
+<br>
+
+The pipe `%>%` was introduced in the `magrittr` package and adopted by the tidyverse. As a result of the popularity of this pipe, in 2021 base R introduced its own pipe, written `|>`. Long-term, `|>` will probably replace `%>%`, but at present the base pipe lacks many useful features (https://r4ds.hadley.nz/workflow-pipes.html), so I still use `%>%`.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Data frames and tibbles
+
+<br>
+
+A `data frame` is a rectangular array of data in which rows represent subjects and columns represent variables, so it is similar in appearance to a spreadsheet.
+
+The tidyverse functions use a data structure called a `tibble` (think, tidy table) that is almost identical to a data frame, except that tibbles look neater when R prints them and they act more logically when you extract data from them.
+
+It is my style to denote data frames and tibbles by giving them names that end in `DF`, such as `icuDF`. It is a matter of personal style, but I think that it improves legibility.
+<br>
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Reading an Excel file
+
+<br>
+
+The tidyverse uses the package `readxl` to read Excel files. In this package there is one key function, `read_excel()`, that reads a single sheet and returns it as a tibble.
+
+```{r eval=FALSE}
+library(readxl)
+
+myDF <- read_excel(path = "C:/Projects/icu/data/myFile.xlsx") 
+```
+
+`read_excel()` has many arguments as its help file shows. To see the help, use the console to enter
+```{r eval=FALSE}
+?read_excel
+```
+
+The displayed information includes
+```{r eval=FALSE}
+read_excel(
+  path,
+  sheet = NULL,
+  range = NULL,
+  col_names = TRUE,
+  col_types = NULL,
+  na = "",
+  trim_ws = TRUE,
+  skip = 0,
+  n_max = Inf,
+  guess_max = min(1000, n_max),
+  progress = readxl_progress(),
+  .name_repair = "unique"
+)
+```
+
+The first argument has the name `path` and gives the path to the file that is to be read. The second argument, `sheet` gives the name or number of the sheet within the spreadsheet, etc.
+
+When the argument name is omitted the arguments are assigned in the order that they are defined. Omitting the argument name is not best practice, but everyone does it. So it is common to see,
+```{r eval=FALSE}
+myDF <- read_excel("C:/Projects/icu/data/myFile.xlsx") 
+```
+
+In the help file the given values are defaults. For example, `skip`, the number of lines skipped before you start reading the data, has a default of zero. If you do not specify `skip` then `read_excel()` will not skip any lines at the top of the spreadsheet.
+
+There is a separate package, `writexl`, that has a function for saving data in `xlsx` format.  
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Data cleaning
+
+<br>
+
+Data cleaning is one of the most time-consuming parts of any analysis. For reproducibility, it is important not to clean interactively. Always clean data in a script.  
+
+The package `janitor` has several functions that help with data cleaning. These include,  
+
+* **clean_names()** creates column names in a consistent style  
+* **remove_empty()** removes blank rows and/or columns  
+* **remove_constant()** removes columns when every value is the same  
+
+Here is a messy Excel spreadsheet
+
+
+![](figs/messy_data.jpg)
+
+
+read_excel() returns this tibble
+
+```{r warning=FALSE, message=FALSE}
+library(readxl)
+
+read_excel("../data/messy_data.xlsx")
+```
+
+Here I give the a relative path, i.e. relative to the current project folder.
+
+Notice how R places two word variable names in `single back ticks` and empty cells are read as missing values, denoted by `NA` in R.
+
+We can tidy the data with
+
+```{r warning=FALSE, message=FALSE}
+library(janitor)
+
+read_excel("../data/messy_data.xlsx") %>%
+  clean_names(case = "lower_camel") %>%
+  remove_empty()
+```
+
+I have chosen to use the `lower_camel` style for the variable names, but there are lots of other options.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Saving data
+
+<br>
+
+There are several different R formats for saving data that enable fast access. The format that I recommend is called RDS. To write data to a file in RDS format we use the tidyverse function `write_rds()` and to read it again we use `read_rds()`. So we might extend our previous code
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+
+read_excel("../data/messy_data.xlsx") %>%
+  clean_names(case = "lower_camel") %>%
+  remove_empty() %>%
+  write_rds("../data/clean_data.rds")
+```
+
+To read the data from the rds file we could use
+
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+<br>
+
+### Extra information on saving data
+
+<br>
+
+`read_rds()` and `write_rds()` are tidyverse replacements for base R functions `readRDS()` and `saveRDS()`. The base R versions compress the files by default, while with the tidyverse functions compression is an option that needs to be requested. 
+
+There are two drawbacks to using RDS format. The contents stored in a binary file not a text file, so you cannot look at them in an editor, and the format is specific to R, so you cannot send an RDS file to a colleague who does not use R.  
+
+Two popular alternative formats are `feather` and `parquet`.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Data manipulation
+
+<br>
+
+In almost every project, we will need to manipulate the data, perhaps selecting a subset of the variables, filtering a subset of the subjects, sorting the data etc. The tidyverse includes a package called **dplyr** that contains dozens of functions for manipulating data that are stored in tibbles, but for the ICU analysis I will only need six of them,
+
+* **rename()**: change the name of a column (variable)    
+* **select()**: choose a subset of the columns (variables)  
+* **filter()**: choose a subset of the rows (subjects)  
+* **mutate()**: alter a column (variable) by calculation or create a new column   
+* **group_by()**: group together the rows (subjects) into subsets   
+* **summarise()**: calculate summary statistics   
+
+I will illustrate the functions using the clean data.
+
+```{r }
+cleanDF %>%
+  filter( sex == "F" ) %>%
+  print()
+```
+
+I could have coded this as
+```{r eval=FALSE}
+cleanDF%>%filter(sex=="F")%>%print()
+```
+
+It would still have worked correctly, but this type of illegible coding is bad practice because it is difficult to read and more likely to contain errors.
+
+Next we will filter the male patients but only display the blood pressures.  
+```{r }
+cleanDF %>%
+  filter( sex == "M" ) %>%
+  select( systolic, diastolic ) %>%
+  print()
+```
+
+I might decide to change the variable names.  
+```{r }
+cleanDF %>%
+  rename( age    = patientAge,
+          gender = sex,
+          sbp    = systolic,
+          dbp    = diastolic) %>%
+  print()
+```
+
+The name tibble with the new names was printed but not saved or assigned to a new data object, so those changes are lost once this particular pipe has finished.
+
+I could calculate summary statistics for the entire sample.  
+```{r }
+cleanDF %>%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %>%
+  print()
+```
+
+In the next example, I group the rows by sex and then calculate the same summary statistics.  
+```{r }
+cleanDF %>%
+  group_by( sex ) %>%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %>%
+  print()
+```
+
+Now I calculate the mean arterial pressure (map)
+```{r }
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  select( id, map) %>%
+  print()
+```
+
+<br>
+
+## Extra information on printing tibbles
+
+<br>
+
+Tibbles hold their data to the maximum precision of your computer, but they round the numbers before printing in an attempt to make the result more readable. Sometimes you need more digits and you can achieve this by setting an option. This option affects all tibbles until you change it again.
+
+```{r }
+options(pillar.sigfig = 5)
+
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  select( id, map) %>%
+  print()
+```
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Visualisation with ggplot2
+
+<br>
+
+`ggplot` is the plotting package that is designed to be used with the tidyverse. There are many other visualisation packages in R.
+
+There are a few ideas that are important if you want to understand the way that `ggplot` works,
+
+* plots are build up in layers  
+* the layers are joined by a +  
+* when options are not specified explicitly, their values are inherited from the previous layer   
+
+So a graph might start with the axes (layer 1), then add some points (layer 2) and finally join the points by lines (layer 3).
+
+If you ask for blue points in layer 2 and then add a line without saying what colour, `ggplot` will look back and inherit the colour. The lines will also be in blue.
+
+You also need to be aware of some curious terminology that `ggplot` uses.
+
+* aspects of the plot that **depend on the data** are specified with the aesthetic function, `aes()`  
+* the contents of the plot (lines, points, bars etc.) are controlled by functions that start with `geom_`  
+
+<br>
+
+## Scatter plots
+
+<br>
+
+Let's illustrate the use of ggplot() by creating scatter plots of the clean data. I create the axes (first layer) within the call to ggplot(). Since the axes depend on the data, they are specified within an aes(). Next I add the points (second layer). The points also depend on the data, but I have chosen not to repeat the same information about x and y,  because I can allow `geom_point()` to inherit its `aes()` from the previous layer.  
+
+```{r fig.height=4, fig.width=6, fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point()
+```
+
+In the next example, I change the size and colour of the points. I have chosen to colour the points according to the patient's sex. Colour depends on the data and so is specified within `aes()`. However, I give all points the same size (i.e. the size does not depend on any data) so the size is not specified inside an `aes()`.  
+
+```{r fig.align='center', fig.height=4, fig.width=6}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3)
+```
+
+In the next plot, I change the shape of the points and add labels. In ggplot2, shapes are controlled by a numeric code that you can find at http://www.cookbook-r.com/Graphs/Shapes_and_line_types/  
+
+```{r fig.height=4, fig.width=6,  fig.align='center', warning=FALSE}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3, shape = 17 ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+
+Next I swap the roles of the colour and the shape. You have full control of the colour by specifying the amount of red, green and blue as hexidecimal numbers. However the standard colours are already defined for you and can be requested by their name. Here is a link to definitions of the predefined colours, http://sape.inf.usi.ch/quick-reference/ggplot2/colour  
+
+```{r  warning=FALSE, fig.height=4, fig.width=6,  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, shape = sex)) +
+  geom_point( size = 3, colour = "blue" ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+
+<br>
+
+## Smooths
+
+<br>
+
+ggplot2 offers various smoothed lines that can be plotted together with their 95% confidence intervals using `geom_smooth()`. First we will illustrate the default, which is a loess smooth. This places a flexible curve that follows the pattern in the data.
+
+```{r  warning=FALSE, message=FALSE, fig.height=4, fig.width=6,  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth()
+```
+
+To show a straight line fit we set the method argument to "lm" (linear model). 
+
+```{r  warning=FALSE, message=FALSE, fig.height=4, fig.width=6,  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm")
+```
+
+<br>
+
+## Facets
+
+<br>
+
+Facets repeat a visualisation for each level of a factor; they are created using the `facet_grid()` function, which is added as a new layer. The function uses the syntax `rows ~ columns` to control the layout.  
+
+In the example, the rows are not subdivided but there is a column for each sex.
+```{r fig.height=4, fig.width=6,  fig.align='center', warning=FALSE, message=FALSE}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm") +
+  facet_grid( . ~ sex) 
+```
+
+<br>
+
+## Histograms
+
+<br>
+
+In the next example we combine data manipulation with ggplot() to create a histogram. Notice that we pipe the data with %>% but combine layers of the plot with +. This is an unfortunately messy syntax that reflects the fact that ggplot was introduced prior to the pipe; you just have to get used to it.  
+
+Here I create a histogram of the MAP.
+
+```{r warning=FALSE, fig.height=4, fig.width=6,  fig.align='center'}
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  ggplot( aes(x= map ) ) +
+    geom_histogram( bins = 5, fill = "steelblue" ) +
+    labs(x     = "MAP", 
+         title = "Mean Arterial Pressure")
+```
+
+<br>
+
+## Extra information on Visualisation
+
+<br>
+
+There are numerous packages that work with, or enhance, `ggplot2`, several of which are used in other sessions of this course.
+
+Base R has its own plotting functions; they are quick and flexible, but it is not easy to use them to create publication quality graphics. 
+
+The chief competitors to `ggplot2` are Javascript programs that have interfaces to enable them to be used in R. They include `plotly`, `highcharter`, `vegalite` and `dygraphs`. 
+
+`shiny` is a tool for creating dashboards and other interactive web applications. See the gallery at https://shiny.rstudio.com/gallery/ for examples of what is possible. Shiny integrates well with the tidyverse. 
+
+<br>
+
+# Statistical tests
+
+<br>
+
+Most of R's functions for statistical tests pre-date the tidyverse, so they were not written with the data frame as the first argument; as a result we need to use the dot notation.
+
+I will run a t-test as an illustration.
+```{r}
+cleanDF %>%
+  t.test(systolic ~ sex, data = .) %>%
+  print()
+```
+
+As `?t.test` would show, the data frame (tibble) that contains the data to be tested is the 9th argument of the `t.test()` function and has the name `data`. 
+
+The `~` notation is used for all R formulas. In this case, `systolic` is the variable being analysed and it is tested across the levels of `sex`, i.e. male vs female.
+
+There is much more on using statistical functions in the other sessions.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Report writing with rmarkdown
+
+<br>
+
+To control the format of a report requires a file that combines text with the formatting information. The language in which the formatting is specified is called a **markup language**, and the most commonly used markup languages are latex and html. These markup languages are designed so that more or less whatever format you want, there is a way of producing it. The downside is that these markup languages are complex to use.
+
+**markdown** was created in response to the complexity of most markup languages. Markdown can only create the most commonly used formatting, but as a consequence it can be kept relatively simple. In markdown, a typical piece of formatted text would be   
+
+
+```{r eval = FALSE}
+## Methods
+
+The data were analysed by **analysis of variance**.
+
+```
+
+  \#\# requests a medium sized header and \*\* surrounds text that we want to be printed in bold.
+ 
+When Yihui Xie wanted to write a report writing package for R, he decided to base it on the markdown and he called the package **rmarkdown**. With this package you can create a markdown document and then insert chunks of R code within it. When the document is created, in a process that has become known as `knitting`, the R code is executed and the results are inserted into the document. 
+
+The blocks of code that are inserted into the markdown file are referred to as **chunks**. Each chunk starts with three back-ticks and r in curly brackets and ends with another three back-ticks. Between these markers you insert standard R code.
+
+An rmarkdown file begins with a header that starts and ends with lines containing three dashes. The header is written in a language called YAML (Yet Another Markup Language). It includes information about the document and instructions on how to process it.  
+
+RStudio has several buttons and menus that simply the use of rmarkdown. They will be used in the demonstration.
+
+The use of rmarkdown will be shown in the demonstration.
+
+## Extra information on markdown
+
+If you want to produce pdfs then you will need to install latex. The easiest way to do this is vis the R package `tinytex`. In the console type
+```{r eval=FALSE}
+tinytex::install_tinytex()
+```
+
+The package `quarto` has been released recently as the next generation version of `rmarkdown`. The two packages have very similar syntax, but `quarto` offers extra features. `rmarkdown` dominates at present, but the future belongs to `quarto`. 

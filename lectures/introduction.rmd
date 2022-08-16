@@ -1,0 +1,363 @@
+--- 
+title: "Introduction"
+---
+
+<br>
+
+## Installing R and RStudio
+
+<br>
+
+**R** is the programming language that we will use on this course and **RStudio** is a convenient interface to R that makes R easier to use. RStudio does no calculations itself, but instead passes your instructions on to R.
+
+Both R and Rstudio are free to download.
+
+R can be downloaded from https://www.r-project.org/. Follow the links and accept the defaults.
+
+Should you need assistance, type `installing R` into a search engine and you will find plenty of videos that take you through the installation process.
+
+The RStudio IDE (Integrated Development Environment) can be downloaded from https://www.rstudio.com/. You need the free, open-source product, known as `RStudio Desktop`.
+
+Installing RStudio is just as straightforward as installing R, but should you need assistance, search for `installing RStudio` and watch one of the many videos.  
+
+When you run RStudio, the IDE opens and links to your copy of R, which runs unseen in the background.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+## The design of R
+
+<br>
+
+R is a very flexible language designed specifically for statistical analysis. Its flexibility means that it can be used in many different ways. The style of use that I teach on this course is closely linked to my approach to data analysis. So you might think of the course as teaching both R and a style of data analysis.
+
+To use R effectively you need to understand something of the way that it works.
+
+In the 1970's, John Chambers described his ideal computer language for programming statistical calculations. This design was implemented as a commerical product called S. During the 1990's a small group of academics in New Zealand took John Chambers' design and created a free version of the language, which they called R. The first stable version of R was released in 2000 and since then R has grown to be one of the most popular languages for data analysis with in excess of 10 million users.
+
+R is a language for creating data analysis tools. In this sense, it is very different from statistical software such as SPSS, Stata or SAS, that have the tools build-in. That said, most of the time we analyse data using tools created by other people.
+
+The three sessions of this introductory course cover everything you need to know about R up to the point when you are ready to write your own functions and create your own data analysis tools. I have a second, intermediate, level course that covers writing and using your own R functions.
+
+R is a compromise between the strictness of languages such as C++ and the flexibility of software such as Excel. Critics might claim that it falls between the two stools, but most statisticians find R to be easy to learn and ideal for most of their analysis needs. The only serious limitation of R arises with very large datasets and computationally intensive tasks when speed becomes an important consideration. Such tasks are usually tackled by combining R with C++, but that is well beyond the level of this course.
+
+<br>
+
+
+### Components of R
+
+<br>
+
+R is designed to work with `data objects` and `functions`.
+
+Computer languages that emphasise the objects are called object orientated (OO) and those that emphasise the functions are called functional programming (FP) languages. R is flexible and can be used in either way, but is best suited to a functional approach.
+
+<br>
+
+### data objects
+
+<br>
+
+R recognises many types of `data object`, such as single numbers, character strings, vectors of numbers, matrices and so on.  
+
+Every data object is given a name, which can be almost anything provided that it begins with a letter of the alphabet. So `age`, `myAge`, `age_vector7`, `Vector.Age` are all valid names for data objects.
+
+<br>
+
+### functions
+
+<br>
+
+A `function` takes one or more data objects and combines or transforms them into a new data object.
+
+Functions also have names, but they can be distinguished from data objects because a function name is always followed by a pair of brackets, as in `mean()`, `print()` and `select()`.  
+
+Data objects are fed into a function by placing them inside the brackets.
+
+The data object returned by the function is given a name using the assignment operator `<-` (made from the less than character followed by the minus character).
+
+Let's suppose that the times at which some event occurs are stored in a data object (in this case a vector) called `eventTimes`. A typical piece of R code might be,  
+
+```{r eval=FALSE}
+meanTime <- mean(eventTimes)
+print(meanTime, digits=3)
+```
+
+The data object, `eventTimes`, is fed into the function `mean()`, which transforms the vector of times into a single number i.e. the average, that number is assigned the name `meanTime` and the `print()` function displays `meanTime` to three significant digits. 
+
+The data object(s) that are passed to a function are called **arguments** and, within the brackets, these arguments are separated by commas.  
+
+R provides a basic set of built-in functions, known collectively as **base R**.
+
+Other functions have been contributed by R users. They are collected together in **packages**, which can be downloaded from internet repositories. Currently, there are over 18,000 packages on CRAN (The Comprehensive R Archive Network) and a typical package will contain, perhaps, 20 functions.
+
+An important skill is to be able to find a package that contains a function appropriate to your current needs.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+## Using a Package
+
+<br>
+
+### The tidyverse packages
+
+<br>
+
+Since we plan to use the `tidyverse` in our data analyses, the `tidyverse` packages will need to be installed from the internet before we start. The packages that we need are all available from the CRAN repository and they can be downloaded in RStudio using the 'Packages' tab. This tab displays the packages that are currently available on your computer and has an `install` button for adding others. 
+
+Rather than install the `tidyverse` packages one by one, there is a short-cut that installs the most commonly used of the `tidyverse` packages in one step. Click the install button and a window will open that enables you to specify the package that you want. CRAN is the default repository, so in the `Packages` box type the word 'tidyverse' and make sure that the install dependencies box is checked. It is often the case that one package will use functions taken from other packages and by checking the dependencies box you ensure that everything that you need will be installed. Installation is automatic but may take a minute or so depending on the speed of your internet connection. Once it is completed, you will see that the list of available packages includes some new entries including `tidyverse` packages such as `dplyr` and `ggplot2`.
+
+The packages have been copied from CRAN and stored in a local folder called a `library`. The path to your R library was automatically identified by RStudio and it was displayed in the window that appeared when you clicked the install button.
+
+When you want to use the functions included in a previously installed package within one of your R scripts, you need to include a line of code such as
+```{r eval=FALSE}
+library(dplyr)
+```
+
+This tells R to make the functions of the `dplyr` package available to this script and so R goes to your library and retrieves those functions. This process is called `loading` the package.
+
+When you want to use the `tidyverse` packages, there is another short-cut that loads the most frequently used packages in one step, just start the script with the line
+```{r eval=FALSE}
+library(tidyverse)
+```
+
+<br>
+
+### tidyverse functions
+
+<br>
+
+The originator and driving force behind the tidyverse is a data scientist named Hadley Wickham who works for RStudio.
+
+The tidyverse functions are intended to cover all of the stages of a typical data analysis and they are designed to be used together, so they have similar APIs (Application Programming Interfaces), i.e. you use them in a similar way. The integration and similarity makes them easy to use and quick to learn.
+
+On the internet you will find several of Hadley Wickham's tidyverse videos. If you have the time, you might watch Hadley's talk from the 2017 RStudio Conference at https://www.rstudio.com/resources/rstudioconf-2017/data-science-in-the-tidyverse-hadley-wickham/ (click on the picture of Hadley to start the video)
+
+In many of his videos, Hadley explains the philosophy behind the project in terms of the data analysis workflow that is shown below. The diagram emphasises the point that the `tidyverse` is not just a way of coding R, it is also an approach to analysing data.
+
+<center>
+![Hadley Wickham's workflow](figs/workflow.png)
+</center>
+
+The idea is that all data analyses start by `importing` the data, the data are reorganized ready for analysis in a step that Hadley Wickham calls `tidying`. Now we are ready to start the analysis, which is viewed as an iterative process involving `data transformation`, `visualisation` and `model fitting`. As a result of this process, we come to understand the data and in the final step we `communicate` that understanding to others in a report or presentation. The `tidyverse` includes functions for each stage in this workflow.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+## Using RStudio
+
+<br>
+
+Rstudio is an environment that makes it easier to analyse data with R. 
+
+RStudio divides the screen into four panes. One pane contains the `console` where you can enter a single line of R code that is executed immediately when you press `Enter`. Any output generated by the line of code will be displayed in the console.
+
+The second pane is an `Editor` that is used to create R scripts. A script is a text file containing many lines of R code that are usually executed collectively. There is a button above this pane labelled 'Run' that can be used to execute all or part of a script. When the script is run, any output is displayed in the console. You can have multiple files open in the Editor.
+
+The other two panes have multiple uses. One of the panes has tabs that enable you to move between  
+
+* `Files`: to show the files in your folders    
+* `Plots`: to display any plots created by your code  
+* `Packages`: to install new packages or see which packages are already installed  
+* `Help`: to display help on the R language  
+* `Viewer`: to display webpages  
+
+The other pane has tabs  
+
+* `Environment`: to show the names of your data objects  
+* `History`: to show a record of all of the lines of code that have been entered via the console, though not the corresponding output  
+* `Connections`: to connect to external databases.
+
+Other tabs may appear depending on what RStudio is doing at the time.
+
+If you want to modify the layout of RStudio, you use the menu system and select `Tools` - `Global Options`. A window will open that enables you reorganise the panes, change the font, colour scheme etc.
+
+By searching the internet for `Introduction to RStudio`, you will find countless videos that demonstrate the basic use of RStudio. 
+
+<br>
+
+### Project management
+
+<br>
+
+RStudio incorporates a basic project management system. When a new project is created, RStudio associates the project with a folder and keeps a record of which files you work on, so that RStudio can restore your work when you next decide to work on that project.
+
+In the first session of this course, we will analyse some data on time spent in an ICU after a cardiac arrest, so let's assume that you have created a project folder with the path `C:/Projects/icu`.
+
+Using the RStudio menus, go to `File` - `New Project...` and a window will open. Select `Existing Directory` and move to the icu folder. RStudio creates a project with the name `icu` and whenever you want to work on this data analysis, you can use the menus `File` - `Open Project` and then select the project `icu`. There is also a button in the top right corner of the screen for going directly to the project options.
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+## Organising a data analysis
+
+<br>
+
+As I have tried to stress, the way that you learn R should be closely linked to the way that you plan to analyse data. The approach that I have to data analysis is guided by three principles; **reproducibility**, **literate coding** and **standardised workflow**.
+
+<br>
+
+### Reproducibility
+
+<br>
+
+You must be able to reproduce every step in your data analysis and obtain exactly the same results. After all, if you cannot reproduce your results then you do not know whether or not they are correct.  
+
+Reproducibility requires careful record keeping and comprehensive archiving. This means that you must **never work interactively**, for example by copying and pasting data. In the future, you would have no way of telling whether you copied and pasted correctly. Excel can be used for data entry, but it should never be used for data manipulation. Always write an R script to read the Excel file and then manipulate the data in R. That way, every step is recorded in the script and if an error is spotted, you can edit the R script and re-run it.
+
+The avoidance of copying and pasting extends to report writing. Suppose that you were to copy and paste a graph into a report. Would you, six months later, be able to reproduce the same graph? Would you know whether you copied the wrong graph by mistake when the original report was prepared? Much better to use an R script to prepare the report, then you have a record of what was done and you can guarantee that you will be able to reproduce the graph by re-running the script.
+
+<br>
+
+### Literate coding
+
+<br>
+
+Your R scripts must be clear and easy to follow. A clear coding style will help you to minimise errors and make it easier for you to return to an old script and to see immediately what it does.
+
+There are many guides to good R coding style, for example,  
+
+* https://google.github.io/styleguide/Rguide.html  
+* http://style.tidyverse.org/  
+
+So long as you are consistent, it does not matter which of the many guideline you adopt. Indeed, you may well develop your own style.
+
+When you write an R script,
+
+* layout is important - the use of spaces between words,  spreading complex code over several lines, aligning code so that it is easier to read, indenting code to make it clear when items are related, dividing code into sections separated by blank lines - these will all make the code more legible, easier to follow and so less likely to contain errors   
+
+* include comments - comments are just lines of text that explain the code but which are not executed by R - at a minimum each section of code should be preceded by a comment explaining what is to be done and there should be a header at the start of each script that describes what the whole script does.
+
+In R a comment is anything that follows a hash, #.  
+
+Here is an example of the way that I would start an R script for importing data in a study of statins.
+
+```{r eval = FALSE}
+
+#===================================================================
+# File:         statin_import.R
+# Project:      statin  
+# Date created: 18 Sept 2021
+# Author:       John Thompson
+# Description:  read raw data files and save data in rds format
+# Changes:
+#         24 Sept 2021: code added to read dietary data
+#         25 sept 2021: error corrected in code for dietary data  
+#===================================================================
+
+#-------------------------------------------------------------------
+# Section 1: Read and save the baseline data
+#
+
+
+```
+
+There are many different conventions that people use for naming files and data objects. They are covered in the style guides mentioned above.  
+
+Common naming conventions include `lowerCaseCamel`, for example statinImport.R, the `snake` style with under-scores, as in statin_import.R, and the use of `full stops`, as in statin.import.R. My preference is use snake for file names and functions and lowerCaseCamel for data objects. You do not need to adopt my style, but you should try to be consistent.
+
+Make all of your names descriptive and don't be afraid of long names. The slight inconvenience of typing the name is more than balanced by the time saved by avoiding errors due to misidentification.
+
+<br>
+
+### Standardised workflows
+
+<br>
+
+It helps to use the same approach to all of your data analyses. Having a standard way of working will help you to avoid errors and it will make your work more efficient and easier to follow.
+
+An important aspect of a good workflow is to ensure that every project has the same folder structure.
+
+When you start a new project, create a folder with a name descriptive of the project then within that folder create subfolders named
+
+- data  
+     - rawData    
+     - rData  
+- docs  
+- R  
+- rmd  
+- temp  
+
+**data** is subdivided so that the original data files (in **rawData**) are kept separate from processed data (in **rData**).   
+**docs** is the place for minutes of meetings, pdfs of papers, lists of references etc.  
+**R** contains the R scripts      
+**rmd** contains the rmarkdown scripts that create your reports and presentations    
+**temp** is a folder for things that you do not want to keep permanently  
+
+You might find it convenient to use subfolders within these folders, for instance within docs it might be useful to have separate subfolders for minutes, pdfs and references. 
+
+<br>
+
+### Diary file
+
+<br>
+
+For each project, I create a text file called `diary.txt` into which I enter dated notes on my progress with the analysis. I also record, problems with my code, ideas for future analysis, comments from colleagues etc. The diary file is stored in the `docs` folder.  
+
+<br>
+
+<hr style="border:2px solid #3559A6"> </hr>
+
+<br>
+
+## Data Analysis Checklist
+
+<br>
+
+### Before starting a data analysis  
+
+<br>
+
+Here is a checklist of the things that you should do prior to starting a new data analysis  
+
+* Select a short, descriptive project name   
+
+* Create a project folder with the same name as the project    
+
+* Create the standard subfolder structure within the project folder  
+
+* Create a text file called **diary.txt** in the docs subfolder    
+
+* Copy the original data files to the rawData folder   
+
+* Open RStudio and create an RStudio project that points to your project folder   
+
+* Open the diary file in RStudio's editor pane and in it, note the date that the project started, the project aims and any important websites or contacts.    
+
+Obviously, you may need to modify this pattern, for instance, it is sometimes not possible, or not convenient, to copy the raw data from its original source.
+
+<br>
+
+### During a data analysis  
+
+<br>
+
+* Never work interactively. Interactive analysis is not reproducible.    
+
+* Document everything as you go along: its tiresome but essential. Put comments in the scripts and notes in the diary.  
+
+* Never edit the original data files - that way you can always start again should something go wrong. Instead, read the raw data files into R, process them and then save the processed data for later use.  
+
+* Write separate R scripts for each stage in the analysis  
+
+* Never duplicate information in your data files - imagine that age and sex were stored in a file of basic participant demographics - it might seem convenient to duplicate that information in a file of genetic data, but if you do, there is the potential for inconsistencies between the two files - perhaps as a result of data entry or data cleaning.   
+
+* Keep a backup copy of your work in the cloud or on a different computer or external hard-drive - you only need to backup the raw data and the R scripts - together they will enable you to recreate everything else  
+
+* Archive the data and all of your scripts whenever you reach an important milestone, such as the publication of a report  
+
+In an intermediate level course, I would stress the importance of `version control` with `git`, a better way of archiving your scripts.
+

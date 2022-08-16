@@ -1,0 +1,283 @@
+--- 
+title: 'Solution 2: C3 activation in ARMD'
+editor_options:
+  chunk_output_type: console
+output: html_document
+---
+
+<br>
+<br>
+
+**(b) Adapt code from the demonstration script `demo3` to read the downloaded data, clean it, join the tables and save the combined data in rds format within your own folder structure. Save your R code in a file called `solution3.R`.**
+
+You need to change the header and to the file paths. No need to repeat the data exploration from the demo; just add the cleaning steps into the code.
+
+```{r message=FALSE, warning=FALSE}
+# ================================================================== 
+# File:        solution3.R
+# Project:     glioma (project folder C:/Projects/ISCB)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: cytokine profile and glioma
+# ================================================================== 
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+# Raw Data files
+patientData  <- "C:/Projects/RCourse/ISCB/data/rawData/nijaguna/pone.0137524.s009.xlsx"
+cytokineData <- "C:/Projects/RCourse/ISCB/data/rawData/nijaguna/An eighteen serum cytokine signature for discriminating glioma from normal healthy individuals raw data.xlsx"
+
+# Files for saving rds versions of the data
+patient_rds  <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna_patient.rds"
+cytokine_rds <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna_cytokine.rds"
+nijaguna_rds <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna.rds"
+
+#-----------------------------------------------------------------
+# Read & clean the patient data
+#
+read_excel( patientData, range="A2:I220", na="NA") %>% 
+  clean_names("lower_camel") %>% 
+  mutate( sampleType = factor(sampleType),
+          gender     = factor(gender) ) %>%
+  rename( age = ageAtDiagnosisYears) %>%
+  # Data edits based on the demo
+  filter( sampleId != "GN457" ) %>%
+  write_rds(patient_rds)
+
+#-----------------------------------------------------------------
+# Read & clean the cytokine data
+#
+read_excel( cytokineData) %>% 
+  # drop the sample type that is already in the patient table
+  filter( sample != "Type" ) %>% 
+  # everything is read as strings so convert the cytokines to numbers
+  mutate_at( vars(-"sample"), as.numeric ) %>%
+  # transpose
+  pivot_longer( !contains("sampl"), 
+                names_to  = "sampleId", 
+                values_to = "value") %>%
+  pivot_wider( names_from  = sample, 
+               values_from = value) %>%
+  # Data edits based on the demo
+  mutate( sampleId = ifelse( sampleId == "GS8", "GS08", sampleId),
+          sampleId = ifelse( sampleId == "GS319_1", "GS319", sampleId) ) %>%
+  filter( !(sampleId %in% c("GS319_2", "GN457_A", "GN457_1", "GS172_2")) ) %>%
+  # save to rds
+  write_rds(cytokine_rds)
+
+#-----------------------------------------------------------------
+# Join the two data frames and save
+#
+read_rds(patient_rds) %>%
+  left_join( read_rds(cytokine_rds), by = "sampleId") %>%
+  write_rds( nijaguna_rds)
+
+#-----------------------------------------------------------------
+# read the joined data & and count the number with each diagnosis
+#
+studyDF <- read_rds( nijaguna_rds)
+```
+
+<br>
+
+**(c) Nijaguna et al. identify IL10, IL17 and IL15 as being the best cytokines for discriminating between healthy individuals (normal) and those with stage V glioblastoma (GBM)**
+
+**Make a boxplot of the log2(IL10) values across all 4 diagnostic groups. In the paper the authors compare the diagnostic groups in terms of the median log2 value. Do the same by using Kruskal-Wallis and Wilcoxon Rank Sum tests to compare the log2 cytokine levels in, (a) all four groups (b) GBM vs Normal (c) AA vs DA vs GBM.**
+
+**Repeat the analysis for IL17 and IL15.**
+
+```{r}
+# ----------------------------------------------------
+#  Analysis of IL10
+#
+# boxplot 
+studyDF %>%
+  ggplot( aes( x = sampleType, y = log2(IL10), fill = sampleType ) ) +
+  geom_boxplot() +
+  labs( title = "Boxplot of log2(IL10") +
+  theme_light() +
+  theme( legend.position = "none")
+
+# Test for all four groups
+studyDF %>%
+  kruskal.test( log2(IL10) ~ sampleType, data = .)
+
+# test GBM vs Normal
+studyDF %>%
+  filter( sampleType %in% c("GBM", "Normal")) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  wilcox.test( log2(IL10) ~ sampleType, data = .)
+
+# test AA vs DA vs GBM 
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  kruskal.test( log2(IL10) ~ sampleType, data = .)
+```
+
+<br>
+
+```{r}
+# ----------------------------------------------------
+#  Analysis of IL17
+#
+# boxplot 
+studyDF %>%
+  ggplot( aes( x = sampleType, y = log2(IL17), fill = sampleType ) ) +
+  geom_boxplot() +
+  labs( title = "Boxplot of log2(IL17") +
+  theme_light() +
+  theme( legend.position = "none")
+
+# Test for all four groups
+studyDF %>%
+  kruskal.test( log2(IL17) ~ sampleType, data = .)
+
+# test GBM vs Normal
+studyDF %>%
+  filter( sampleType %in% c("GBM", "Normal")) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  wilcox.test( log2(IL17) ~ sampleType, data = .)
+
+# test AA vs DA vs GBM 
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  kruskal.test( log2(IL17) ~ sampleType, data = .)
+```
+
+<br>
+
+```{r}
+# ----------------------------------------------------
+#  Analysis of IL15
+#
+# boxplot 
+studyDF %>%
+  ggplot( aes( x = sampleType, y = log2(IL15), fill = sampleType ) ) +
+  geom_boxplot() +
+  labs( title = "Boxplot of log2(IL15") +
+  theme_light() +
+  theme( legend.position = "none")
+
+# Test for all four groups
+studyDF %>%
+  kruskal.test( log2(IL15) ~ sampleType, data = .)
+
+# test GBM vs Normal
+studyDF %>%
+  filter( sampleType %in% c("GBM", "Normal")) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  wilcox.test( log2(IL15) ~ sampleType, data = .)
+
+# test AA vs DA vs GBM 
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  kruskal.test( log2(IL15) ~ sampleType, data = .)
+```
+
+<br>
+<br>
+
+(d) **The Kruskal-Wallis test for comparing log2(IL10) in AA vs DA vs GBM is borderline significant. An approximate p-value can be obtained from the chi-squared distribution with 2 degrees of freedom (number of groups - 1).**
+
+**The p-value given by `kruskal.test()` is based on the, so-called, exact distribution in which the test statistic is evaluated over all possible re-arrangements of the data.**
+
+```{r}
+# Exact p-value
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  kruskal.test( log2(IL10) ~ sampleType, data = .)
+
+# Chi-squared approximation
+pchisq(2, 6.8769)
+```
+
+**Follow the instructions below to check the p-value using permutations.**
+
+**Use str() to look at the structure of the list returned by kruskal.test() in order to discover how to extract the value of the test statistic.** 
+
+```{r}
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  kruskal.test( log2(IL10) ~ sampleType, data = .) -> kw
+
+str(kw)
+```
+
+the test statistic is `kw$statistic`
+
+* **Note the value of the test statistic for log2(IL10) in AA vs DA vs GBM**
+
+```{r}
+print(kw$statistic)
+```
+
+**To permute the values of a column x of 100 values stored in myDF and save the results as permX, you could use the `sample()` function as in the code**  
+
+```{r eval=FALSE}
+myDF %>%
+  mutate( permX = sample(x, size=100, replace=FALSE))
+```
+
+
+**use the sample() function to create a column of permuted log2(IL10) values and then apply the Kruskal-Wallis test to the permuted values noting the new value of the statistic.**
+
+```{r}
+# set seed for reproducibility
+set.seed(6718)
+# k-w test on the permuted data
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  mutate( permIL10 = sample(IL10, size = 190, replace=FALSE)) %>%
+  kruskal.test( log2(permIL10) ~ sampleType, data = .)
+```
+
+The test is non-significant, as would be expected given that the values were assigned to the diagnostic groups at random.  
+
+**Place your permutation code in a loop and repeat it 1000 times saving the 1000 values of the test statistic. What proportion of the permuted test statistics are equal to or exceed the value of the test statistic for the real data?**
+
+```{r}
+# set seed for reproducibility
+set.seed(6718)
+# tibble to save the results
+tibble( index = 1:1000,
+        stat  = rep(NA, 1000)) -> resultsDF
+# permute 1000 times
+for( i in 1:1000 ) {
+# k-w test on the permuted data
+studyDF %>%
+  filter( sampleType != "Normal" ) %>%
+  mutate( sampleType = fct_drop( sampleType )) %>%
+  mutate( permIL10 = sample(IL10, size = 190, replace=FALSE)) %>%
+  kruskal.test( log2(permIL10) ~ sampleType, data = .) -> kw
+
+resultsDF$stat[i] <- kw$statistic
+}
+# plot the results
+resultsDF %>%
+  ggplot( aes( x = stat)) +
+  geom_histogram( bins = 50, fill = "steelblue") +
+  geom_vline( xintercept = 6.876871, colour = "red", size = 2)
+```
+
+
+**Is your permutation p-value closer to the 'exact' p-value given by `kruskal.test()` or the chi-squared approximation?**
+
+The permuted p-value is the proportion of statistics that under the null fall to the right of 6.876871.
+
+```{r}
+# calculated the permuted p-value
+resultsDF %>%
+   mutate( extreme = as.numeric(stat >= 6.876871)) %>%
+   summarise( p = sum(extreme) / 1000 ) %>%
+   print()
+```
+
+The permuted p-value is close to the exact value. This is to be expected; the permuted value is over 1000 permutation and the exact p-value is over all possible permutations. 1000 might not be enough to make the difference clear. Run the permutations with a different seed and you will get a different result. For more stability try running more permutations, say 10,000.
+

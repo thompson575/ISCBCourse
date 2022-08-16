@@ -1,0 +1,524 @@
+---
+title: "Data Analysis with R and the tidyverse"
+subtitle: "Demonstration 1"
+author: "John Thompson"
+institute: "University of Leicester"
+date: "21st August 2022"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css, my_theme.css]
+    nature:
+      slideNumberFormat: "%current%"
+      highlightStyle: github
+      highlightLines: true
+      ratio: "16:9"
+      countIncrementalSlides: true
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(xaringanthemer)
+style_duo_accent(
+  primary_color = "#4d90c4",
+  secondary_color = "#FF961C",
+  inverse_header_color = "#FFFFFF"
+)
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  hiline = TRUE
+)
+```
+
+```{r xaringan-panelset, echo=FALSE}
+xaringanExtra::use_panelset()
+xaringanExtra::use_webcam()
+xaringanExtra::use_tile_view()
+```
+
+## Demonstration
+
+Data from
+
+Iesu, E., Franchi, F., Zama Cavicchi, F., Pozzebon, S., Fontana, V., Mendoza, M., ... & Taccone, F. S. (2018).  
+**Acute liver dysfunction after cardiac arrest.**  
+PLoS One, 13(11), e0206655..   
+
+- Department of Intensive Care at Erasme Hospital in Brussels. 
+- all patients who had a cardiac arrest either in or out of hospital between 2007 and 2015
+- exclude people who died within 24 hours of their arrest 
+- Outcome for such patients is poor 
+
+**analysis of the number of days spent in ICU**
+
+---
+## Extra functions
+
+- **glimpse()**  - summarise the contents of a data frame or tibble  
+- **is.na()**    - return TRUE if missing (NA) and FALSE otherwise   
+- **!**          - negation or NOT, turns TRUE to FALSE & FALSE to TRUE  
+- **!is.na()**   - return TRUE if NOT missing  
+- **median()**   - **sum()**, **min()**, **max()** - return median, total, minimum, maximum   
+- **quantile()** - return a quantile, i.e. value a proportion prob of the way through the sorted values, median(x) is the same as quantile(x, prob=0.5) **kruskal.test()**  
+- Kruskal-Wallis nonparametric test for difference in location between 2 or more groups.  
+- **scale_y_log10()** - in ggplot, use a log10 scale for the y-axis. Also scale_x_log10(), scale_x_log(), scale_x_reverse() and many others   
+- **subtitle** - an extra argument for ggplot labs()  
+
+---
+## Script header
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#==================================================================
+# File:        demo1.R
+# Project:     icu (project folder C:/Projects/ISCB/icu)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Analysis of length of Stay in ICU 
+#==================================================================
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+excel_file <- "C:/Projects/RCourse/ISCB/data/rawData/iesu/Table 1 Enrica.xlsx"
+clean_file <- "C:/Projects/Rcourse/ISCB/data/rData/cardiac.rds"
+```
+]
+.panel[.panel-name[output]
+
+no output for this code
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#==================================================================
+# File:        demo1.R
+# Project:     icu (project folder C:/Projects/ISCB/icu)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Analysis of length of Stay in ICU 
+#==================================================================
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+excel_file <- "C:/Projects/RCourse/ISCB/data/rawData/iesu/Table 1 Enrica.xlsx"
+clean_file <- "C:/Projects/Rcourse/ISCB/data/rData/cardiac.rds"
+```
+]
+]
+---
+## Read and clean
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Read & clean the data
+#
+read_excel( excel_file ) %>%
+  remove_empty() %>%
+  remove_constant() %>%
+  clean_names( "lower_camel" ) %>%
+  filter( !is.na(id) ) %>%
+  write_rds( clean_file )
+
+#-----------------------------------------------------------------
+# Read clean data
+#
+cardiacDF <- read_rds( clean_file )
+```
+]
+.panel[.panel-name[output]
+
+no output for this code
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Read & clean the data
+#
+read_excel( excel_file ) %>%
+  remove_empty() %>%
+  remove_constant() %>%
+  clean_names( "lower_camel" ) %>%
+  filter( !is.na(id) ) %>%
+  write_rds( clean_file )
+
+#-----------------------------------------------------------------
+# Read clean data
+#
+cardiacDF <- read_rds( clean_file )
+```
+]
+]
+---
+## Inspect the data
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Data summary
+#
+cardiacDF %>%
+  glimpse()
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Data summary
+#
+cardiacDF %>%
+  glimpse()
+```
+]
+]
+---
+## mean and std of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %>%
+  summarise( n       = n(),
+             icuMean = mean(icuStay),
+             icuStd  = sd(icuStay)) 
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %>%
+  summarise( n       = n(),
+             icuMean = mean(icuStay),
+             icuStd  = sd(icuStay)) 
+```
+]
+]
+---
+## Histogram of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Histogram of Days in ICU 
+#
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x     = "Days",
+        title = "Number of days spent in ICU following a Cardiac Arrest") 
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width = '600px', out.height = '450px', fig.align='center'}
+#-----------------------------------------------------------------
+# Histogram of Days in ICU 
+#
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x     = "Days",
+        title = "Number of days spent in ICU following a Cardiac Arrest") 
+```
+]
+]
+---
+## Quantiles of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %>%
+  summarise( n         = n(),
+             icuMin    = min(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75),
+             icuMax    = max(icuStay) )
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %>%
+  summarise( n         = n(),
+             icuMin    = min(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75),
+             icuMax    = max(icuStay) )
+```
+]
+]
+---
+## Quantiles by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Mortality & ICU stay
+#
+cardiacDF %>%
+  group_by( hospDeath ) %>%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75)) %>%
+  mutate( pct = 100 * n / sum(n) ) %>%
+  select( hospDeath, n, pct, icuMedian, icuQ1, icuQ3)
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Mortality & ICU stay
+#
+cardiacDF %>%
+  group_by( hospDeath ) %>%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75)) %>%
+  mutate( pct = 100 * n / sum(n) ) %>%
+  select( hospDeath, n, pct, icuMedian, icuQ1, icuQ3)
+```
+]
+]
+---
+## Histograms by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Days in ICU by Death in Hospital
+#
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by Death in Hospital",
+        subtitle = "Shorter stay in those that die") +
+  facet_grid( hospDeath ~ . )
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width = '600px', out.height = '450px', fig.align='center'}
+#-----------------------------------------------------------------
+# Days in ICU by Death in Hospital
+#
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by Death in Hospital",
+        subtitle = "Shorter stay in those that die") +
+  facet_grid( hospDeath ~ . )
+```
+]
+]
+---
+## Test of ICU stay by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Wilcoxon test of Days in ICU by Death in Hospital
+#
+cardiacDF %>%
+  wilcox.test( icuStay ~ hospDeath, data = .)
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Wilcoxon test of Days in ICU by Death in Hospital
+#
+cardiacDF %>%
+  wilcox.test( icuStay ~ hospDeath, data = .)
+```
+]
+]
+---
+## CVD Score and ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# CVD score & ICU stay
+#
+cardiacDF %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  group_by( hospDeath, cvd) %>%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75))
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# CVD score & ICU stay
+#
+cardiacDF %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  group_by( hospDeath, cvd) %>%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75))
+```
+]
+]
+---
+## Analysis of Survivors: ICU stay and cvd
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# cvd and days in ICU for survivors
+#
+cardiacDF %>%
+  filter( hospDeath == 0 ) %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by CVD score in patients that survive",
+        subtitle = "no clear association with CVD score") +
+  facet_grid( cvd ~ . ) 
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width = '600px', out.height = '450px', fig.align='center'}
+#-----------------------------------------------------------------
+# cvd and days in ICU for survivors
+#
+cardiacDF %>%
+  filter( hospDeath == 0 ) %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by CVD score in patients that survive",
+        subtitle = "no clear association with CVD score") +
+  facet_grid( cvd ~ . ) 
+```
+]
+]
+---
+## Analysis of Survivors: test of cvd
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# Kruskal-Wallis test of Days in ICU for survivors
+#
+cardiacDF %>%
+  filter( hospDeath == 0 ) %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  kruskal.test( icuStay ~ cvd, data = .)
+
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-----------------------------------------------------------------
+# Kruskal-Wallis test of Days in ICU for survivors
+#
+cardiacDF %>%
+  filter( hospDeath == 0 ) %>%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %>%
+  kruskal.test( icuStay ~ cvd, data = .)
+```
+]
+]
+---
+## ICU stay and RoSC
+
+.panelset[
+.panel[.panel-name[code]
+
+```{r eval=FALSE}
+#-----------------------------------------------------------------
+# ICU Stay & Time to Return of Spontaneous Circulation (RoSC)
+#
+cardiacDF %>%
+  ggplot( aes(x = timeToRoscMin, y = icuStay) ) +
+  geom_point( colour = "darkgreen") +
+  scale_y_log10() +
+  geom_smooth( method = "lm" , colour = "black") +
+  labs( x        = "Time to Spontaneous Circulation (mins)",
+        y        = "Days in ICU on log scale",
+        title    = "Length of ICU stay by time to ROSC faceted by death in hospital",
+        subtitle = "evidence of an interaction") +
+  facet_grid( hospDeath ~ .) 
+
+```
+]
+.panel[.panel-name[output]
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width = '600px', out.height = '450px', fig.align='center'}
+#-----------------------------------------------------------------
+# ICU Stay & Time to Return of Spontaneous Circulation (RoSC)
+#
+cardiacDF %>%
+  ggplot( aes(x = timeToRoscMin, y = icuStay) ) +
+  geom_point( colour = "darkgreen") +
+  scale_y_log10() +
+  geom_smooth( method = "lm" , colour = "black") +
+  labs( x        = "Time to Spontaneous Circulation (mins)",
+        y        = "Days in ICU on log scale",
+        title    = "Length of ICU stay by time to ROSC faceted by death in hospital",
+        subtitle = "evidence of an interaction") +
+  facet_grid( hospDeath ~ .) 
+
+```
+]
+]
+

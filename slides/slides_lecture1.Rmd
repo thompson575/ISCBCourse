@@ -1,0 +1,547 @@
+---
+title: "Data Analysis with R and the tidyverse"
+subtitle: "Lecture 1"
+author: "John Thompson"
+institute: "University of Leicester"
+date: "21st August 2022"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css, my_theme.css]
+    nature:
+      slideNumberFormat: "%current%"
+      highlightStyle: github
+      highlightLines: true
+      ratio: "16:9"
+      countIncrementalSlides: true
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(xaringanthemer)
+style_duo_accent(
+  primary_color = "#4d90c4",
+  secondary_color = "#FF961C",
+  inverse_header_color = "#FFFFFF"
+)
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  hiline = TRUE
+)
+```
+
+```{r xaringan-panelset, echo=FALSE}
+xaringanExtra::use_panelset()
+xaringanExtra::use_webcam()
+xaringanExtra::use_tile_view()
+```
+
+## The Pipe
+
+Convert Object x into Object y
+.panelset[
+.panel[.panel-name[Step by Step]
+```{r eval=FALSE}
+a <- fun1(x)
+b <- fun2(a)
+y <- fun3(b)
+```
+
+workspace becomes cluttered with intermediate objects
+]
+.panel[.panel-name[In one step]
+```{r eval=FALSE}
+y <- fun3(fun2(fun1(x)))
+```
+
+Difficult to read and error prone
+]
+.panel[.panel-name[Pipe]
+```{r eval=FALSE}
+x %>%
+  fun1() %>%
+  fun2() %>%
+  fun3()   -> y
+```
+
+Each returned object is fed (piped) into the next function
+
+Most R users code the pipe as
+```{r eval=FALSE}
+y <- x %>%
+       fun1() %>%
+       fun2() %>%
+       fun3()
+```
+]
+.panel[.panel-name[First argument]
+The piped object becomes the **first argument** of the next function  
+
+```{r eval=FALSE}
+x %>%
+  fun1(y, z)  ->  w
+```
+
+is the same as  
+```{r eval=FALSE}
+w <- fun1(x, y, z)
+```
+]
+.panel[.panel-name[The dot]
+You can force a different position using **the dot**
+
+```{r eval=FALSE}
+x %>%
+  fun1(y, ., z)  ->  w
+```
+
+is the same as  
+
+```{r eval=FALSE}
+w <- fun1(y, x, z)
+```
+
+]
+]
+---
+## Data frames and tibbles
+
+A **data frame** is a rectangular data object  
+
+- rows represent observations  
+- cols represent variables  
+
+A **tibble** is the tidyverse version of a data frame
+```{r}
+tibble( id     = 1:4,
+        age    = c(39, 45, 22, 56),
+        gender = c("m", "f", "f", "m") ) %>%
+  print()
+```
+
+---
+## Reading an Excel file
+
+
+.panelset[
+.panel[.panel-name[read_excel()]
+Use the **read_excel()** function from the **readxl** package
+
+```{r eval=FALSE}
+# load the package
+library(readxl)
+
+# read the Excel file
+myDF <- read_excel(path = "C:/Projects/icu/data/myFile.xlsx") 
+```
+]
+.panel[.panel-name[help]
+Obtain help on any available function using *?functionName*
+
+```{r eval=FALSE}
+?read_excel
+```
+
+```{r eval=FALSE}
+read_excel(
+  path,
+  sheet = NULL,
+  range = NULL,
+  col_names = TRUE,
+  col_types = NULL,
+  na = "",
+  trim_ws = TRUE,
+  skip = 0,
+  n_max = Inf,
+  guess_max = min(1000, n_max),
+  progress = readxl_progress(),
+  .name_repair = "unique"
+)
+```
+]
+.panel[.panel-name[Quick and Dirty]
+
+When argument names are not specified, the arguments are assigned in order.
+
+It is common to see,
+```{r eval=FALSE}
+myDF <- read_excel("C:/Projects/icu/data/myFile.xlsx") 
+```
+
+Best practice is to specify the argument names. (principle of literate programming)
+]
+]
+---
+## Data Cleaning
+
+The **janitor** package contains functions for cleaning a tibble, including  
+
+- **clean_names()** creates column names in a consistent style  
+- **remove_empty()** removes blank rows and/or columns  
+- **remove_constant()** removes columns when every value is the same  
+
+---
+## Data Cleaning example
+
+.panelset[
+.panel[.panel-name[Messy Excel]
+<img src = "C:/Projects/RCourse/ISCB/site/figs/messy_data.jpg" />
+
+]
+.panel[.panel-name[read_excel()]
+```{r warning=FALSE, message=FALSE}
+library(readxl)
+
+read_excel("../data/messy_data.xlsx") %>%
+  print()
+```
+
+missing values denoted by **NA**  
+two word names enclosed in back ticks, e.g. **`patient age`**
+]
+.panel[.panel-name[read and clean]
+```{r warning=FALSE, message=FALSE}
+library(janitor)
+
+read_excel("../data/messy_data.xlsx") %>%
+  clean_names(case = "lower_camel") %>%
+  remove_empty() %>%
+  print()
+```
+
+**case="snake"** is a popular option, **patient_age**
+]
+]
+---
+## Saving in rds format
+
+.panelset[
+.panel[.panel-name[rds]
+- Save the cleaned data  
+- Will not need to clean it again  
+- re-cleaning would invite inconsistencies  
+
+**rds** is a fast, compact way of saving data  
+
+Save with **write_rds()** and read back with **read_rds()**
+]
+.panel[.panel-name[Example]
+```{r eval=FALSE}
+# read the messy data
+read_excel("data/rawData/messy_data.xlsx") %>%
+  # clean the data
+  clean_names(case = "lower_camel") %>%
+  remove_empty() %>%
+  # save in rds format
+  write_rds("data/rData/clean_data.rds")
+```
+
+```{r eval=FALSE}
+# read and print the clean data
+cleanDF <- read_rds("data/rData/clean_data.rds")
+
+print(cleanDF)
+```
+]
+]
+---
+## Data manipulation
+
+**dplyr** is a tidyverse package for manipulating data in tibbles.
+
+The functions are designed to work with the pipe.
+
+The most important functions are,  
+
+- **rename()**: change the name of a column (variable)    
+- **select()**: choose a subset of the columns (variables)  
+- **filter()**: choose a subset of the rows (subjects)  
+- **mutate()**: alter a column (variable) by calculation or create a new column   
+- **group_by()**: group together the rows (subjects) into subsets   
+- **summarise()**: calculate summary statistics   
+
+---
+## Filter  
+
+subset of the rows
+
+.panelset[
+.panel[.panel-name[Raw Data]
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+]
+.panel[.panel-name[filter sex]
+```{r}
+cleanDF %>%
+  filter( sex == "F" ) %>%
+  print()
+```
+]
+.panel[.panel-name[filter age]
+```{r}
+cleanDF %>%
+  filter( patientAge > 40 ) %>%
+  print()
+```
+]
+]
+---
+## Select or Rename Variables
+
+.panelset[
+.panel[.panel-name[Raw Data]
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+]
+.panel[.panel-name[select]
+```{r}
+cleanDF %>%
+  filter( sex == "M" ) %>%
+  select( systolic, diastolic ) %>%
+  print()
+```
+]
+.panel[.panel-name[rename]
+```{r}
+cleanDF %>%
+  rename( age    = patientAge,
+          gender = sex,
+          sbp    = systolic,
+          dbp    = diastolic) %>%
+  print()
+```
+]
+]
+---
+## Summarise and Group by
+
+.panelset[
+.panel[.panel-name[Raw Data]
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+]
+.panel[.panel-name[summarise]
+```{r}
+cleanDF %>%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %>%
+  print()
+```
+]
+.panel[.panel-name[group_by]
+```{r}
+cleanDF %>%
+  group_by( sex ) %>%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %>%
+  print()
+```
+]
+]
+
+---
+## Mutate
+
+.panelset[
+.panel[.panel-name[Raw Data]
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+]
+.panel[.panel-name[mutate]
+```{r}
+# calculate the mean arterial pressure
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  print()
+```
+]
+.panel[.panel-name[combination]
+```{r}
+cleanDF %>%
+  rename( sbp = systolic) %>%
+  select( id, sbp) %>%
+  mutate( mSBP      = mean(sbp),
+          deviation = sbp - mSBP) %>%
+  print()
+```
+]
+]
+---
+## Visualisation
+
+**ggplot2** is the package of functions for graphics  
+
+Key principles of ggplot2
+
+- plots are build up in layers  
+- the layers are joined by a **+**  
+- when options are not specified explicitly, their values are inherited from the previous layer   
+
+Terminology  
+
+- aspects of the plot that **depend on the data** are specified with the aesthetic function, `aes()`  
+- the contents of the plot (lines, points, bars etc.) are controlled by functions with names that start with `geom_`  
+---
+## Scatter plots
+.panelset[
+.panel[.panel-name[Raw Data]
+```{r}
+cleanDF <- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+]
+.panel[.panel-name[simple]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point()
+```
+]
+.panel[.panel-name[colour & size]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3)
+```
+]
+.panel[.panel-name[shape & labels]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3, shape = 17 ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+]
+.panel[.panel-name[swap]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic, shape = sex)) +
+  geom_point( size = 3, colour = "blue" ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+]
+]
+---
+## Smooths
+
+.panelset[
+.panel[.panel-name[lowess]
+```{r out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth()
+```
+]
+.panel[.panel-name[regression]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm")
+```
+]
+]
+---
+## Facets
+
+.panelset[
+.panel[.panel-name[columns]
+```{r out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm") +
+  facet_grid( . ~ sex) 
+```
+]
+.panel[.panel-name[rows]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm") +
+  facet_grid( sex ~ .) 
+```
+]
+]
+---
+## Histogram
+
+.panelset[
+.panel[.panel-name[histogram]
+```{r out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  ggplot( aes(x = map ) ) +
+    geom_histogram( bins = 5, fill = "steelblue" ) +
+    labs(x     = "MAP", 
+         title = "Mean Arterial Pressure")
+```
+]
+.panel[.panel-name[density]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %>%
+  ggplot( aes(x = map ) ) +
+    geom_density( bins = 5, fill = "steelblue" ) +
+    labs(x     = "MAP", 
+         title = "Mean Arterial Pressure")
+```
+]
+]
+---
+## Tests in a pipe
+
+.panelset[
+.panel[.panel-name[t-test]
+```{r out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  t.test(systolic ~ sex, data = .) %>%
+  print()
+```
+]
+.panel[.panel-name[Wilcoxon rank sum]
+```{r  out.width = '600px',  fig.align='center'}
+cleanDF %>%
+  wilcox.test(systolic ~ sex, data = .) %>%
+  print()
+```
+]
+]
+---
+## rmarkdown
+
+**markdown**, a simple markup language, plus **chunks** of R code.  
+
+**YAML** header controls the document style   
+
+RStudio contains many short-cuts to aid report production.  

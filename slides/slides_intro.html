@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data Analysis with R and the tidyverse</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="John Thompson" />
+    <script src="slides_intro_files/header-attrs/header-attrs.js"></script>
+    <link href="slides_intro_files/panelset/panelset.css" rel="stylesheet" />
+    <script src="slides_intro_files/panelset/panelset.js"></script>
+    <script src="slides_intro_files/xaringanExtra-webcam/webcam.js"></script>
+    <script id="xaringanExtra-webcam-options" type="application/json">{"width":"200","height":"200","margin":"1em"}</script>
+    <link href="slides_intro_files/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="slides_intro_files/tile-view/tile-view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="my_theme.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Data Analysis with R and the tidyverse
+]
+.subtitle[
+## Introduction
+]
+.author[
+### John Thompson
+]
+.institute[
+### University of Leicester
+]
+.date[
+### 21st August 2022
+]
+
+---
+
+
+
+
+
+
+
+
+class: left, middle
+
+.pull-left[
+
+### Statistician &amp; Genetic Epidemiologist
+&lt;br&gt;
+### john.thompson@le.ac.uk
+&lt;br&gt;
+### Blog on Teaching R
+### https://staffblogs.le.ac.uk/teachingr/
+]
+
+.pull-right[
+&lt;img src=figs/john02.jpg width=350, height=600&gt;
+]
+---
+## The Design of the R language
+
+- Designed in 1970s by John Chambers specifically for statistical data analysis  
+
+- Implemented first as the commercial product S and then as the free version R  
+
+- First stable release in 2000, now with over 10 million users  
+
+- Key design feature is R's **flexibility**  
+
+- Cannot teach R without considering how it will be used  
+
+- This is an opinionated course; it links R to a style of data analysis  
+
+---
+## Functional programming
+
+All computer languages work with  
+
+- **objects**: structured data, e.g. numbers, matrices, strings etc.  
+
+- **functions**: code that manipulates the data objects  
+
+Languages that emphasise objects are called object orientated (OO) and those that emphasise the functions are all functional programming (FP) languages.  
+
+R is flexible so can be used in both style. I will emphasise the FP approach.  
+
+- This course only covers the use of R existing functions.  
+- The next stage is to write your own functions.  
+- Perhaps, 90% of all data analysis uses existing functions.  
+- Your own functions are needed for developing new methods of analysis and to make you code more efficient.  
+---
+## A typical piece of R Code
+
+
+```r
+# create a data object
+evenTimes &lt;- c(12, 5, 4, 1, 7, 5, 3)
+
+# use a function to create a new data object
+meanTime &lt;- mean(eventTimes)
+
+# use a function to print the new object
+print(meanTime, digits=3)
+```
+
+Objects are assigned to their names using `&lt;-`  
+function names are always followed by brackets, e.g. c(), mean()
+The inputs to the function, called arguments, are placed in the brackets and separated by commas
+`=` is used for assigning values to arguments  
+&lt;br&gt;
+Set of related functions are collected together in **packages**.  
+
+Often the most difficult task is to find a function that does what you want. There are 100's of base R functions and 100,000s of functions downloadable from the internet.
+---
+## The tidyverse  
+
+Hadley Wickham sees data analysis in stages  
+
+&lt;center&gt;
+&lt;img src=figs/workflow.png&gt;
+&lt;/center&gt;
+
+He, with others, have written packages of functions for each stage in an analysis  
+- **readr** and **haven** for importing data  
+- **dplyr** and **tidyr** for manipulating data  
+- **ggplot2** for plotting data  
+- **broom** for summarising models  
+- **rmarkdown** for report writing  
+
+There are about 20 packages, known collectively as the **tidyverse**
+---
+## A Style of Data Analysis
+
+My style is guided by three main principles  
+
+- **Reproducibility**: you must be able to reproduce all of your results exactly  
+- **Literate programming**: the scripts that you write should be easy to follow  
+- **Structured workflows**: you should work in the same way on all of your data analysis projects  
+
+Following these principles will **increase efficiency** and **decrease errors**.  
+
+I will teach my personal style. You don't need to follow my style, but you do need a style.
+
+For example, here are two styles aimed at producing literate code  
+
+- https://google.github.io/styleguide/Rguide.html  
+- http://style.tidyverse.org/  
+
+My coding style is different, but I try to be consistent.
+
+---
+## Checklist: Prior to starting the analysis 
+ 
+- Select a short, descriptive project name   
+
+- Create a project folder with the same name as the project    
+
+- Create your standard folder structure within the project folder. Here is the structure that I use,  
+
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;data  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;dataStore  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;rawData    
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;rData  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;docs  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;R  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;rmd  
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;temp  
+
+
+- Create a text file called **diary.txt** in the docs subfolder    
+
+- Copy the original data files to the rawData folder   
+
+- Open RStudio and create an RStudio project that points to your project folder. Start the diary.
+---
+## Checklist: During the Data Analysis  
+
+- Never work interactively. Interactive analysis is not reproducible.    
+
+- Document everything as you go along: its tiresome but essential. Put comments in the scripts and notes in the diary.    
+
+- Never edit the original data files - Instead, read the raw data files into R, process them and then save the processed data for later use.  
+
+- Write separate R scripts for each stage in the analysis (**targets**)  
+
+- Never duplicate information in your data files - the risk of inconsistencies is too great   
+
+- Keep a backup copy of your work    
+
+- Archive the data and all of your scripts whenever you reach an important milestone, such as the publication of a report (**renv** and **git**)  
+
+
+
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%",
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

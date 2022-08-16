@@ -1,0 +1,236 @@
+--- 
+title: 'Demo 2: Genetic determinants of Serum Zinc'
+editor_options:
+  chunk_output_type: console
+output: html_document
+---
+  
+<br>
+<br>
+
+# The Data
+
+This demonstration is based on selected data from,
+
+Smailhodzic, D., van Asten, F., Blom, A.M., Mohlin, F.C., den Hollander, A.I., van de Ven, J.P., van Huet, R.A., Groenewoud, J.M., Tian, Y., Berendschot, T.T. and Lechanteur, Y.T., 2014.  
+**Zinc supplementation inhibits complement activation in age-related macular degeneration.**  
+PloS one, 9(11), p.e112682.
+
+The paper can be found at https://journals.plos.org/plosone/article?id = 10.1371/journal.pone.0112682 and the data are available as an Excel file in the dryad repository at https://datadryad.org/stash/dataset/doi:10.5061%2Fdryad.3gq6t  
+
+This particular analysis looks at the zinc levels measured in blood samples taken at 6 visits. Visit 1 was before the start of zinc supplementation, visits 2, 3 and 4 were made monthly during the period when the patients were on zinc supplementation. Visit 5 was 2 months after the end of supplementation and visit 6 was 18 months after the start of the trial, i.e. 15 months after the end of supplementation.
+
+The zinc levels are compared across SNPs in the CFH and ARMS2 genes both of which are affect the complement system and have been linked to the risk of ARMD.
+
+# Organising this data analysis
+
+Code for this demonstration is based on three principles; **reproducibility**, **literate coding** and **standardised workflow**.
+
+See Demo1 for details.
+
+## New functions used in the demo
+
+<br>
+
+`starts_with()` - a helper function for use within dplyr's `select()`. Identifies all variables that start with the chosen string. Other similar functions include `ends_with()` and `contains()`.  
+`group` - an optional argument for use in ggplot's `aes()`. Whatever geom you request is plotted separately for each value of group.  
+`autofit()`  - a `flextable` function for automatically fitting cell size to the cell contents  
+`as.numeric()` - convert to a number. Used here to convert a factor into the numbers 1, 2, 3 etc. corresponding to the levels  
+`fct_collapse()`  - a `forcats` function for combining levels of a factor. Other forcats functions include,  
+
+* `fct_drop()` - drop levels that have a count of zero.  
+* `fct_lump()` - lump together the rarely used levels into an `other` category.  
+* `fct_relevel()` - specify a new order for the levels.  
+* `fct_rev()` - reverse the order of the levels.  
+
+
+<br>
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Zinc Analysis
+
+### Points to note
+
+The TT genotype of the CFH SNP is rare and so the TT and CT genotypes are combined and compared with the CC genotype.
+
+The error bar plots illustrate the overlay of two layers with different aesthetics, aes(). One is of a value by a factor and the other is a value by a number.
+
+<br>
+
+### The Code
+
+<br>
+
+```{r eval = FALSE, message = FALSE, warning = FALSE}
+# ================================================================== 
+# File:        demo2.R
+# Project:     Zinc (project folder C:/Projects/ISCB)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Zinc levels over time in relation to two SNPs 
+# ================================================================== 
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+excel_file <- "C:/Projects/Rcourse/ISCB/data/rawData/smailhodzic/Zinc supplementation inhibits complement activation in age-related macular degeneration.xls"
+rds_file   <- "C:/Projects/Rcourse/ISCB/data/rData/zinc.rds"
+
+#-----------------------------------------------------------------
+# Read & clean the data
+#
+read_excel( excel_file) %>%
+  clean_names("lower_camel") %>% 
+  select( studyNo, cfhY402H, arms2Rs10490924, starts_with("zinc")) %>%
+  mutate( cfh  = factor(cfhY402H, 
+                        levels = 1:3, 
+                        labels = c("TT", "CT", "CC")),
+          arms = factor(arms2Rs10490924, 
+                        levels = 1:3, 
+                        labels = c("GG", "TG", "TT"))) %>%
+  select( -cfhY402H, -arms2Rs10490924) %>%
+  pivot_longer( zincV1:zincV6, names_to = "visit", values_to = "zinc") %>%
+  mutate( visit = str_replace(visit, "zincV", "")) %>%
+  mutate( visit = factor(visit, levels = c("1", "2", "3", "4", "5", "6"),
+                         labels = c("Baseline", "1 Month", "2 Months",
+                                    "3 Months", "5 Months", "18 Months") ) ) %>%
+  write_rds( rds_file)
+
+#-----------------------------------------------------------------
+# Read clean data
+#
+zincDF <- read_rds( rds_file )
+
+#-----------------------------------------------------------------
+# Data summary
+#
+glimpse(zincDF)
+
+#-----------------------------------------------------------------
+# Zinc profile for each patient
+#
+zincDF %>%
+  ggplot( aes(x = visit, y = zinc, group = studyNo)) +
+  geom_line() +
+  theme_light()
+
+#-----------------------------------------------------------------
+# Genotype numbers at Baseline
+#
+zincDF %>%
+  filter( !is.na(cfh)) %>%
+  filter( visit == "Baseline") %>%
+  group_by(cfh) %>%
+  count() 
+  
+zincDF %>%
+  filter( !is.na(arms)) %>%
+  filter( visit == "Baseline") %>%
+  group_by(arms) %>%
+  count() 
+
+#-----------------------------------------------------------------
+# Table: mean zinc by visit and CFH genotype
+#
+zincDF %>%
+  filter( !is.na(cfh)) %>%
+  group_by(visit, cfh) %>%
+  summarise( meanZinc = mean(zinc, na.rm = TRUE)) %>%
+  pivot_wider( names_from = cfh, values_from = meanZinc) %>%
+  flextable() %>%
+  autofit() %>%
+  set_caption("CFH Genotype and Serum Zinc") %>%
+  colformat_double(
+    j      = c( 2, 3, 4),
+    digits = 1
+  )
+
+#-----------------------------------------------------------------
+# Table: mean zinc by visit and ARMS2 genotype
+#
+zincDF %>%
+  filter( !is.na(arms)) %>%
+  group_by(visit, arms) %>%
+  summarise( meanZinc = mean(zinc, na.rm = TRUE)) %>%
+  pivot_wider( names_from = arms, values_from = meanZinc) %>%
+  flextable() %>%
+  autofit() %>%
+  set_caption("ARMS2 Genotype and Serum Zinc") %>%
+  colformat_double(
+    j      = c( 2, 3, 4),
+    digits = 1
+  )
+
+#-----------------------------------------------------------------
+# Plot: mean & 95% CI for zinc by CFH genotype
+#
+zincDF %>%
+  filter( !is.na(cfh)) %>%
+  filter( !is.na(zinc)) %>%
+  mutate( cfh = fct_collapse(cfh, CT = c("CT", "TT"))) %>%
+  group_by(visit, cfh) %>%
+  summarise( n = n(),
+             zincMN = mean(zinc),
+             zincSD = sd(zinc)) %>%
+  mutate( lb = zincMN - 1.96*zincSD/sqrt(n),
+          ub = zincMN + 1.96*zincSD/sqrt(n)) %>%
+  mutate( v = as.numeric(visit)) %>%
+  ggplot( aes(x = visit, y = zincMN)) +
+  geom_point( size = 3 ) +
+  geom_errorbar( aes(ymin = lb, ymax = ub), width = 0.1) +
+  geom_line( aes(x = v, y = zincMN) ) +
+  labs( y = "Serum Zinc" ) +
+  facet_grid( . ~ cfh ) +
+  theme_light()
+
+#-----------------------------------------------------------------
+# Plot: mean & 95% CI for zinc by ARMS2 genotype
+#
+zincDF %>%
+  filter( !is.na(arms)) %>%
+  filter( !is.na(zinc)) %>%
+  mutate( visit = factor(visit,
+                         labels = c("Base", "1mth", "2mth", 
+                                  "3mth", "5mth", "18mth"))) %>%
+  group_by(visit, arms) %>%
+  summarise( n = n(),
+             zincMN = mean(zinc),
+             zincSD = sd(zinc)) %>%
+  mutate( lb = zincMN - 1.96*zincSD/sqrt(n),
+          ub = zincMN + 1.96*zincSD/sqrt(n)) %>%
+  mutate( v = as.numeric(visit)) %>%
+  ggplot( aes(x = visit, y = zincMN)) +
+  geom_point( size = 3 ) +
+  geom_errorbar( aes(ymin = lb, ymax = ub), width = 0.1) +
+  geom_line( aes(x = v, y = zincMN) ) +
+  labs( y = "Serum Zinc" ) +
+  facet_grid( . ~ arms ) +
+  theme_light()
+
+#-----------------------------------------------------------------
+# Test: Change from baseline by CFH genotype
+#
+zincDF %>%
+  filter( !is.na(cfh)) %>%
+  mutate( cfh = fct_collapse(cfh, CT = c("CT", "TT"))) %>%
+  pivot_wider( names_from = visit, values_from = zinc) %>%
+  mutate( dZinc = `3 Months` - Baseline ) %>%
+  filter( !is.na(dZinc)) %>%
+  t.test( dZinc ~ cfh, data = .)
+
+#-----------------------------------------------------------------
+# Test: Change from baseline by ARMS2 genotype
+#
+zincDF %>%
+  filter( !is.na(arms)) %>%
+  pivot_wider( names_from = visit, values_from = zinc) %>%
+  mutate( dZinc = `3 Months` - Baseline ) %>%
+  filter( !is.na(dZinc)) %>%
+  oneway.test( dZinc ~ arms, data = .)
+
+```

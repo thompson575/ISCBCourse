@@ -1,0 +1,275 @@
+--- 
+title: 'Demo 3: Glioma and IL2'
+editor_options:
+  chunk_output_type: console
+output: html_document
+---
+  
+<br>
+<br>
+
+# The Data
+
+This demonstration is based on selected data from,
+
+Nijaguna, M.B., Patil, V., Hegde, A.S., Chandramouli, B.A., Arivazhagan, A., Santosh, V. and Somasundaram, K., 2015.  
+**An eighteen serum cytokine signature for discriminating glioma from normal healthy individuals.**  
+PloS one, 10(9), p.e0137524.  
+
+The paper can be found at https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0137524 and the data are available as two Excel files in the dryad repository at https://datadryad.org/stash/dataset/doi:10.5061/dryad.8jq92.  
+
+
+Gliomas are a type of brain tumour with a poor survival rate. In this study healthy patients were compared with patients with grade II tumours (Diffuse Astrocytomas, DA), grade III tumours (Anaplastic Astrocytomas, AA) and grade IV timours (Glioblastomas, GBM). Blood samples were taken and the levels of 48 different cytokines were measured. Cytokines are small molecules used to pass signals between cells. They are often associated with the immune system and are indicators of inflammation or infection.
+
+The aim of the study was to assess whether the levels of cytokine Interleukin 2 (IL2) help distinguish between healthy patients and the different grades of gliomas.
+
+# Organising this data analysis
+
+Code for this demonstration is based on three principles; **reproducibility**, **literate coding** and **standardised workflow**.
+
+See Demo1 for details.
+
+## New functions used in the demo
+
+<br>
+
+`mutate_at()` - a dplyr function for applying the same mutation to multiple columns.    
+`as.numeric()` - function for converting strings into numbers.  
+`read_excel()` options `range` and `na` - the `range` argument specifies the rectangular section of a spread sheet that is to be read and `na` specified the code used to denote missing values (in Excel the default is to leave the cell blank)
+`contains()` - one of dplyr's help functions for picking variables with names that contain a particular string.  
+`x %in% y` - picks all of the elements of vector x that are also in vector y  `facet_wrap()` - one dimensional version of `facet_grid()`  
+`oneway.test()` - one way anova that by default does not assume equal variances.  
+<br>
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# IL2 Analysis
+
+### Points to note
+
+The patient data are in one Excel spreadsheet and the cytokines are in another. What is more, the cytokines table is transposed so that rows are cytokines and columns are patients. The analysis starts with a data wrangling phase in which the cytokines are transposed and then they are joined with the patient data.  
+
+Transposing a data frame is done in two steps. First the wide format is converted to long and then the long format is converted back to wide, but this time with the original columns as the rows.  
+
+When two tables are joined it is important to check for mismatches, i.e. people who are in one table but not the other.  
+
+<br>
+
+### The Code
+
+<br>
+
+```{r eval = FALSE, message = FALSE, warning = FALSE}
+# ================================================================== 
+# File:        demo3.R
+# Project:     glioma (project folder C:/Projects/ISCB)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Glioma grades and IL2 
+# ================================================================== 
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(broom)
+
+# Raw Data files
+patientData  <- "C:/Projects/RCourse/ISCB/data/rawData/nijaguna/pone.0137524.s009.xlsx"
+cytokineData <- "C:/Projects/RCourse/ISCB/data/rawData/nijaguna/An eighteen serum cytokine signature for discriminating glioma from normal healthy individuals raw data.xlsx"
+
+# Files for saving rds versions of the data
+patient_rds  <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna_patient.rds"
+cytokine_rds <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna_cytokine.rds"
+nijaguna_rds <- "C:/Projects/RCourse/ISCB/data/rData/nijaguna.rds"
+
+#-----------------------------------------------------------------
+# Read & clean the patient data
+#
+read_excel( patientData, range="A2:I220", na="NA") %>% 
+  clean_names("lower_camel") %>% 
+  mutate( sampleType = factor(sampleType),
+          gender     = factor(gender) ) %>%
+  rename( age = ageAtDiagnosisYears) %>%
+  write_rds(patient_rds)
+
+#-----------------------------------------------------------------
+# Read & clean the cytokine data
+#
+read_excel( cytokineData) %>% 
+  # drop the sample type that is already in the patient table
+  filter( sample != "Type" ) %>% 
+  # everything is read as strings so convert the cytokines to numbers
+  mutate_at( vars(-"sample"), as.numeric ) %>%
+  # transpose
+  pivot_longer( !contains("sampl"), 
+                names_to  = "sampleId", 
+                values_to = "value") %>%
+  pivot_wider( names_from  = sample, 
+               values_from = value) %>%
+  # save to rds
+  write_rds(cytokine_rds)
+
+#-----------------------------------------------------------------
+# Read the patient and cytokine tables & check for errors
+#
+patDF <- read_rds(patient_rds)
+cykDF <- read_rds(cytokine_rds)
+
+patDF %>%
+  get_dupes(sampleId)
+
+cykDF %>%
+  get_dupes(sampleId)
+
+patDF %>%
+  anti_join(cykDF, by = "sampleId")
+
+cykDF %>%
+  anti_join(patDF, by = "sampleId")
+
+#-----------------------------------------------------------------
+# Problems
+#   GN457 is duplicates in the patient file once as AA & once as GBM
+#   GS08 (patient table) is GS8 (cytokine table)
+#   GS319 has two cytokine measures GS319_1 and GS319_2
+#   GS172_2 is a second sample from GS172
+# Decisions
+#   drop GN457
+#   rename GS8 to GS08
+#   drop GS319_2 and rename GS319_1 to GS319
+#   drop GS172_2
+#
+patDF %>%
+  filter( sampleId != "GN457" ) -> patEditDF
+
+cykDF %>%
+  mutate( sampleId = ifelse( sampleId == "GS8", "GS08", sampleId),
+          sampleId = ifelse( sampleId == "GS319_1", "GS319", sampleId) ) %>%
+  filter( !(sampleId %in% c("GS319_2", "GN457_A", "GN457_1", "GS172_2")) ) -> cykEditDF
+
+#-----------------------------------------------------------------
+# Check that the changes have worked
+#
+patEditDF %>%
+  get_dupes(sampleId)
+
+cykEditDF %>%
+  get_dupes(sampleId)
+
+patEditDF %>%
+  anti_join(cykEditDF, by = "sampleId")
+
+cykEditDF %>%
+  anti_join(patEditDF, by = "sampleId")
+
+#-----------------------------------------------------------------
+# Join the two data frames and save
+#
+patEditDF %>%
+  left_join(cykEditDF, by = "sampleId") %>%
+  write_rds( nijaguna_rds)
+
+#-----------------------------------------------------------------
+# read the joined data & and count the number with each diagnosis
+#
+studyDF <- read_rds( nijaguna_rds)
+
+studyDF %>%
+  group_by( sampleType) %>%
+  count()
+
+#-----------------------------------------------------------------
+# boxplot IL2 by diagnosis
+#
+studyDF %>%
+  ggplot( aes(x=sampleType, y=IL2)) +
+  geom_boxplot() +
+  theme_light() 
+
+#-----------------------------------------------------------------
+# boxplot log10(IL2) by diagnosis
+#
+studyDF %>%
+  ggplot( aes(x=sampleType, y=IL2, fill = sampleType) ) +
+  geom_boxplot() +
+  scale_y_log10() +
+  theme_light() +
+  theme( legend.position = "none")
+
+#-----------------------------------------------------------------
+# histograms of log10(IL2) by diagnosis
+#
+studyDF %>%
+  ggplot( aes(x=IL2, fill=sampleType)) +
+  geom_histogram() +
+  scale_x_log10() +
+  facet_wrap( ~ sampleType) +
+  theme_light() +
+  theme( legend.position = "none")
+
+#-----------------------------------------------------------------
+# Summary stats of log10(IL2) by diagnosis
+#
+studyDF %>%
+  group_by( sampleType ) %>%
+  summarise( n  = n(),
+             m  = mean( log10(IL2)),
+             s  = sd(log10(IL2)))
+
+#-----------------------------------------------------------------
+# test of log10(IL2) by diagnosis
+#
+studyDF %>%
+  oneway.test( log10(IL2) ~ sampleType, data = .)
+  print() 
+
+#-----------------------------------------------------------------
+# test of log10(IL2) by diagnosis excluding the healthy subjects
+#
+studyDF %>%
+  filter( sampleType != "Normal") %>%
+  mutate( sampleType = fct_drop(sampleType)) %>%
+  oneway.test( log10(IL2) ~ sampleType, data = .)
+
+#-----------------------------------------------------------------
+# log10(IL2) by age and sex
+#
+studyDF %>%
+    filter( !is.na(gender) ) %>%
+    ggplot( aes(x = age, y = log10(IL2), colour = gender)) + 
+    geom_point() +
+    geom_smooth(method="lm")
+
+#-----------------------------------------------------------------
+# model log10(IL2) by age, sex and diagnosis
+#
+studyDF %>%
+    filter( !is.na(gender) ) %>%
+    mutate( tIL2 = log10(IL2)) %>%
+    lm( tIL2 ~ age + gender + sampleType, data=.) -> model1
+
+tidy(model1)
+
+glance(model1)
+
+augment(model1) %>%
+  ggplot( aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline( yintercept=0)
+
+#-----------------------------------------------------------------
+# logistic regression (normal/all glioma) by log10(IL2) by age, sex
+#
+studyDF %>%
+    filter( !is.na(gender) ) %>%
+    mutate( tIL2  = log10(IL2)) %>%
+    mutate( class = ifelse( sampleType == "Normal", 0, 1) ) %>%
+    glm( class ~ gender + age + tIL2, data = .) -> model2
+
+tidy(model2)
+
+glance(model2)
+```

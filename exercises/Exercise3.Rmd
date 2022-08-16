@@ -1,0 +1,76 @@
+--- 
+title:  "Exercise 3: Demo 3: Glioma and IL10, IL17 and IL15"
+---
+
+<br>
+<br>
+
+This exercise is based on the paper  
+
+Nijaguna, M.B., Patil, V., Hegde, A.S., Chandramouli, B.A., Arivazhagan, A., Santosh, V. and Somasundaram, K., 2015.  
+**An eighteen serum cytokine signature for discriminating glioma from normal healthy individuals.**  
+PloS one, 10(9), p.e0137524.  
+
+The paper can be found at https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0137524 and the data are available as two Excel files in the dryad repository at https://datadryad.org/stash/dataset/doi:10.5061/dryad.8jq92.  
+
+<br>
+<br>
+
+Complete the following tasks, making sure that your R script is legible by including comments, choosing descriptive names and paying attention to the layout.
+
+<br>
+
+(a) Follow the check-list in the `introduction` to set up your own project. Download the data from Dryad and save it in the `rawData` folder.  
+
+<br>
+
+(b) Adapt code from the demonstration script `demo3` to read the downloaded data, clean it, join the tables and save the combined data in rds format within your own folder structure. Save your R code in a file called `solution3.R`.
+
+<br>
+
+
+(c) Nijaguna et al. identify IL10, IL17 and IL15 as being the best cytokines for discriminating between healthy individuals (normal) and those with stage V glioblastoma (GBM)
+
+<style> .indented { padding-left: 30pt;  } </style>
+
+<div class="indented">
+
+Make a boxplot of the log2(IL10) values across all 4 diagnostic groups. In the paper the authors compare the diagnostic groups in terms of the median log2 value. Do the same by using Kruskal-Wallis and Wilcoxon Rank Sum tests to compare the log2 cytokine levels in, (a) all four groups (b) GBM vs Normal (c) AA vs DA vs GBM.
+
+Repeat the analysis for IL17 and IL15.
+
+</div>
+
+<br>
+
+(d) The Kruskal-Wallis test for comparing log2(IL10) in AA vs DA vs GBM is borderline significant. An approximate p-value can be obtained from the chi-squared distribution with 2 degrees of freedom (number of groups - 1).
+
+```{r}
+pchisq(2, 6.8769)
+```
+  
+<div class="indented">
+
+The p-value given by `kruskal.test()` is based on the, so-called, exact distribution in which the test statistic is evaluated over all possible re-arrangements of the data. Follow the instructions below to check the p-value using permutations.
+
+* Use str() to look at the structure of the list returned by kruskal.test() in order to discover how to extract the value of the test statistic.  
+<br>
+* Note the value of the test statistic for log2(IL10) in AA vs DA vs GBM  
+<br>
+* To permute the values of a column x of 100 values stored in myDF and save the results as permX, you could use the `sample()` function as in the code  
+
+```{r eval=FALSE}
+myDF %>%
+  mutate( permX = sample(x, size=100, replace=FALSE))
+```
+
+<br>
+* use the sample() function to create a column of permuted log2(IL10) values and then apply the Kruskal-Wallis test to the permuted values noting the new value of the statistic.  
+<br>
+* the permuted values are randomly allocated to AA, DA or GBM so the population distributions of the values in the three diagnostic groups are identical by definition. The test statistic is generated under the null.  
+<br>
+* Place your permutation code in a loop and repeat it 1000 times saving the 1000 values of the test statistic. What proportion of the permuted test statistics are equal to or exceed the value of the test statistic for the real data?  
+<br>
+* Is your permutation p-value closer to the 'exact' p-value given by `kruskal.test()` or the chi-squared approximation?
+
+</div>

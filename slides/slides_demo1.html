@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data Analysis with R and the tidyverse</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="John Thompson" />
+    <script src="slides_demo1_files/header-attrs/header-attrs.js"></script>
+    <link href="slides_demo1_files/panelset/panelset.css" rel="stylesheet" />
+    <script src="slides_demo1_files/panelset/panelset.js"></script>
+    <script src="slides_demo1_files/xaringanExtra-webcam/webcam.js"></script>
+    <script id="xaringanExtra-webcam-options" type="application/json">{"width":"200","height":"200","margin":"1em"}</script>
+    <link href="slides_demo1_files/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="slides_demo1_files/tile-view/tile-view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="my_theme.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Data Analysis with R and the tidyverse
+]
+.subtitle[
+## Demonstration 1
+]
+.author[
+### John Thompson
+]
+.institute[
+### University of Leicester
+]
+.date[
+### 21st August 2022
+]
+
+---
+
+
+
+
+
+
+
+
+## Demonstration
+
+Data from
+
+Iesu, E., Franchi, F., Zama Cavicchi, F., Pozzebon, S., Fontana, V., Mendoza, M., ... &amp; Taccone, F. S. (2018).  
+**Acute liver dysfunction after cardiac arrest.**  
+PLoS One, 13(11), e0206655..   
+
+- Department of Intensive Care at Erasme Hospital in Brussels. 
+- all patients who had a cardiac arrest either in or out of hospital between 2007 and 2015
+- exclude people who died within 24 hours of their arrest 
+- Outcome for such patients is poor 
+
+**analysis of the number of days spent in ICU**
+
+---
+## Extra functions
+
+- **glimpse()**  - summarise the contents of a data frame or tibble  
+- **is.na()**    - return TRUE if missing (NA) and FALSE otherwise   
+- **!**          - negation or NOT, turns TRUE to FALSE &amp; FALSE to TRUE  
+- **!is.na()**   - return TRUE if NOT missing  
+- **median()**   - **sum()**, **min()**, **max()** - return median, total, minimum, maximum   
+- **quantile()** - return a quantile, i.e. value a proportion prob of the way through the sorted values, median(x) is the same as quantile(x, prob=0.5) **kruskal.test()**  
+- Kruskal-Wallis nonparametric test for difference in location between 2 or more groups.  
+- **scale_y_log10()** - in ggplot, use a log10 scale for the y-axis. Also scale_x_log10(), scale_x_log(), scale_x_reverse() and many others   
+- **subtitle** - an extra argument for ggplot labs()  
+
+---
+## Script header
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#==================================================================
+# File:        demo1.R
+# Project:     icu (project folder C:/Projects/ISCB/icu)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Analysis of length of Stay in ICU 
+#==================================================================
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+excel_file &lt;- "C:/Projects/RCourse/ISCB/data/rawData/iesu/Table 1 Enrica.xlsx"
+clean_file &lt;- "C:/Projects/Rcourse/ISCB/data/rData/cardiac.rds"
+```
+]
+.panel[.panel-name[output]
+
+no output for this code
+
+]
+]
+---
+## Read and clean
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Read &amp; clean the data
+#
+read_excel( excel_file ) %&gt;%
+  remove_empty() %&gt;%
+  remove_constant() %&gt;%
+  clean_names( "lower_camel" ) %&gt;%
+  filter( !is.na(id) ) %&gt;%
+  write_rds( clean_file )
+
+#-----------------------------------------------------------------
+# Read clean data
+#
+cardiacDF &lt;- read_rds( clean_file )
+```
+]
+.panel[.panel-name[output]
+
+no output for this code
+
+]
+]
+---
+## Inspect the data
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Data summary
+#
+cardiacDF %&gt;%
+  glimpse()
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## Rows: 374
+## Columns: 71
+## $ id                           &lt;dbl&gt; 257, 258, 259, 260, 261, 262, 264, 265, 2…
+## $ age                          &lt;dbl&gt; 52, 50, 46, 66, 45, 53, 54, 63, 49, 66, 8…
+## $ weight                       &lt;dbl&gt; 62, 65, 75, 65, 55, 82, 115, 60, 80, 75, …
+## $ maleGender1                  &lt;dbl&gt; 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1,…
+## $ icuStay                      &lt;dbl&gt; 2, 4, 16, 2, 2, 2, 4, 9, 12, 5, 4, 4, 5, …
+## $ witnessedArrest1             &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ bystanderCpr1                &lt;dbl&gt; 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,…
+## $ timeToRoscMin                &lt;dbl&gt; 22, 25, 10, 10, 3, 15, 18, 19, 40, 1, 5, …
+## $ epinephrineTotalDoseMg       &lt;dbl&gt; 4, 5, 2, 4, 1, 4, 4, 5, 8, 0, 1, 2, 2, 18…
+## $ outOfHospital1               &lt;chr&gt; "0", "1", "0", "1", "0", "1", "0", "0", "…
+## $ ttm1                         &lt;chr&gt; "1", "1", "1", "1", "1", "1", "1", "1", "…
+## $ nonCardiacEtiology1          &lt;dbl&gt; 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0,…
+## $ nonShockableRhythm1          &lt;dbl&gt; 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1,…
+## $ icuDeath                     &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1,…
+## $ hospDeath                    &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1,…
+## $ favOutcome3MonthCpc1_2_1     &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,…
+## $ corticoids1                  &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1,…
+## $ chronicAnticoagulation1      &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0,…
+## $ chronHeartFailure            &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ hypertension                 &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,…
+## $ coronArteryDis               &lt;dbl&gt; 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0,…
+## $ diabetes                     &lt;dbl&gt; 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0,…
+## $ copdAsthma                   &lt;dbl&gt; 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,…
+## $ previousNeurolDisease        &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ chronicRenalFailur           &lt;chr&gt; "0", "0", "0", "0", "0", "0", "0", "0", "…
+## $ liverCirrhosis               &lt;dbl&gt; 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0,…
+## $ iabp                         &lt;dbl&gt; 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ ecmo                         &lt;dbl&gt; 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1,…
+## $ shock                        &lt;dbl&gt; 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1,…
+## $ icuVspAnyTime                &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,…
+## $ icuDobutamineAnyTime         &lt;dbl&gt; 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1,…
+## $ mechanicalVentilationAnyTime &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ crrtAnyTime                  &lt;dbl&gt; 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1,…
+## $ paracetamol                  &lt;dbl&gt; 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1,…
+## $ amidarone                    &lt;dbl&gt; 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0,…
+## $ bLactams                     &lt;dbl&gt; 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1,…
+## $ fqn                          &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ azoles                       &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ inh                          &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ tmtSmt                       &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ metronidazole                &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ chemotherapy                 &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ aki1                         &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1,…
+## $ lowestScvO2                  &lt;dbl&gt; 56.7, 66.0, 64.0, 46.9, 65.0, 68.0, 67.1,…
+## $ minPlt1000Mm3                &lt;dbl&gt; 26, 230, 169, 80, 47, 85, 12, 41, 177, 65…
+## $ lactIcuAdm                   &lt;dbl&gt; 6.2, 5.1, 4.9, 15.6, 6.9, 4.1, 20.0, 9.0,…
+## $ crpAdmMgL                    &lt;dbl&gt; 260, 44, 73, 75, 44, 44, 350, 60, 100, 36…
+## $ creatAdm                     &lt;dbl&gt; 3.2, 1.0, 0.9, 2.3, 1.4, 2.6, 3.5, 1.2, 1…
+## $ scvO2SvO2Admission           &lt;dbl&gt; 67.0, 66.0, 64.0, 69.0, 65.0, 68.0, 87.7,…
+## $ got                          &lt;dbl&gt; 128, 316, 424, 72, 126, 888, 19510, 165, …
+## $ gpt                          &lt;dbl&gt; 71, 285, 119, 32, 24, 435, 5686, 212, 153…
+## $ ldh                          &lt;dbl&gt; 524, 565, 213, 383, 427, 1211, 17010, 311…
+## $ pal                          &lt;dbl&gt; 171, 123, 266, 107, 52, 57, 194, 119, 108…
+## $ ggt                          &lt;dbl&gt; 77, 316, 920, 269, 52, 180, 57, 20, 55, N…
+## $ bilTot                       &lt;dbl&gt; 0.45, 0.22, 14.00, 0.84, 16.00, 0.57, 0.8…
+## $ aPtt                         &lt;dbl&gt; 27.7, 24.4, 14.0, 45.5, 58.7, 39.6, 65.0,…
+## $ pt                           &lt;dbl&gt; 62, 97, 48, 36, 25, 51, 19, 55, 58, 70, 8…
+## $ inr                          &lt;dbl&gt; 1.29, 1.00, 1.48, 1.91, 2.47, 1.43, 3.45,…
+## $ plt                          &lt;dbl&gt; 225, 338, 181, 158, 57, 153, 12, 110, 112…
+## $ prot                         &lt;dbl&gt; 5.6, 69.0, NA, 65.0, NA, 31.0, 37.0, 6.9,…
+## $ glu                          &lt;dbl&gt; 146, 439, 159, 160, 122, 118, 200, 190, 1…
+## $ pH                           &lt;dbl&gt; 7.11, 7.17, 7.40, 7.12, 7.53, 7.36, 7.00,…
+## $ po2                          &lt;dbl&gt; 105, 413, 140, 84, 61, 84, 66, 89, 76, 85…
+## $ pco2                         &lt;dbl&gt; 34, 45, 29, 39, 41, 31, 38, 33, 44, 36, 4…
+## $ map                          &lt;dbl&gt; 65, 60, 70, 75, 97, 80, 72, NA, 151, 96, …
+## $ hypoxicHepatitis             &lt;dbl&gt; 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,…
+## $ highestBil                   &lt;dbl&gt; 3.60, 0.29, 16.00, 0.84, 24.00, 0.78, 5.8…
+## $ highestInr                   &lt;dbl&gt; 2.45, 1.16, 1.48, 1.93, 3.29, 1.43, 4.28,…
+## $ acuteLiverFailure            &lt;dbl&gt; 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1,…
+## $ apacheIi                     &lt;dbl&gt; 29, 28, 30, 24, 33, 35, 25, 30, 5, 33, 32…
+## $ sofa                         &lt;dbl&gt; 12, 16, 11, 11, 13, 17, 10, 8, 7, 7, 10, …
+```
+]
+]
+---
+## mean and std of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %&gt;%
+  summarise( n       = n(),
+             icuMean = mean(icuStay),
+             icuStd  = sd(icuStay)) 
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## # A tibble: 1 × 3
+##       n icuMean icuStd
+##   &lt;int&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1   374    7.94   9.71
+```
+]
+]
+---
+## Histogram of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Histogram of Days in ICU 
+#
+cardiacDF %&gt;%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x     = "Days",
+        title = "Number of days spent in ICU following a Cardiac Arrest") 
+```
+]
+.panel[.panel-name[output]
+
+&lt;img src="slides_demo1_files/figure-html/unnamed-chunk-10-1.png" width="600px" height="450px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Quantiles of ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Summarise ICU stay
+#
+cardiacDF %&gt;%
+  summarise( n         = n(),
+             icuMin    = min(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75),
+             icuMax    = max(icuStay) )
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## # A tibble: 1 × 5
+##       n icuMin icuQ1 icuQ3 icuMax
+##   &lt;int&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+## 1   374      1     2     9     95
+```
+]
+]
+---
+## Quantiles by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Mortality &amp; ICU stay
+#
+cardiacDF %&gt;%
+  group_by( hospDeath ) %&gt;%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75)) %&gt;%
+  mutate( pct = 100 * n / sum(n) ) %&gt;%
+  select( hospDeath, n, pct, icuMedian, icuQ1, icuQ3)
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## # A tibble: 2 × 6
+##   hospDeath     n   pct icuMedian icuQ1 icuQ3
+##       &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1         0   161  43.0         7     4    13
+## 2         1   213  57.0         3     2     7
+```
+]
+]
+---
+## Histograms by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Days in ICU by Death in Hospital
+#
+cardiacDF %&gt;%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by Death in Hospital",
+        subtitle = "Shorter stay in those that die") +
+  facet_grid( hospDeath ~ . )
+```
+]
+.panel[.panel-name[output]
+
+&lt;img src="slides_demo1_files/figure-html/unnamed-chunk-16-1.png" width="600px" height="450px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Test of ICU stay by Mortality
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Wilcoxon test of Days in ICU by Death in Hospital
+#
+cardiacDF %&gt;%
+  wilcox.test( icuStay ~ hospDeath, data = .)
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## 
+## 	Wilcoxon rank sum test with continuity correction
+## 
+## data:  icuStay by hospDeath
+## W = 24176, p-value = 6.698e-12
+## alternative hypothesis: true location shift is not equal to 0
+```
+]
+]
+---
+## CVD Score and ICU stay
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# CVD score &amp; ICU stay
+#
+cardiacDF %&gt;%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %&gt;%
+  group_by( hospDeath, cvd) %&gt;%
+  summarise( n         = n(),
+             icuMedian = median(icuStay),
+             icuQ1     = quantile(icuStay, prob=0.25),
+             icuQ3     = quantile(icuStay, prob=0.75))
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## # A tibble: 8 × 6
+## # Groups:   hospDeath [2]
+##   hospDeath   cvd     n icuMedian icuQ1 icuQ3
+##       &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1         0     0    52       6.5  3.75  14.2
+## 2         0     1    67       6    4     13  
+## 3         0     2    31       8    3.5   11.5
+## 4         0     3    11       7    3.5   10.5
+## 5         1     0    81       3    2      5  
+## 6         1     1    66       3.5  2      7  
+## 7         1     2    43       3    2      7.5
+## 8         1     3    23       4    2      6.5
+```
+]
+]
+---
+## Analysis of Survivors: ICU stay and cvd
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# cvd and days in ICU for survivors
+#
+cardiacDF %&gt;%
+  filter( hospDeath == 0 ) %&gt;%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %&gt;%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( bins = 50, fill = "steelblue" ) +
+  labs( x        = "Days in ICU",
+        title    = "Length of ICU Stay by CVD score in patients that survive",
+        subtitle = "no clear association with CVD score") +
+  facet_grid( cvd ~ . ) 
+```
+]
+.panel[.panel-name[output]
+
+&lt;img src="slides_demo1_files/figure-html/unnamed-chunk-22-1.png" width="600px" height="450px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Analysis of Survivors: test of cvd
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# Kruskal-Wallis test of Days in ICU for survivors
+#
+cardiacDF %&gt;%
+  filter( hospDeath == 0 ) %&gt;%
+  mutate( cvd = chronHeartFailure + hypertension + coronArteryDis ) %&gt;%
+  kruskal.test( icuStay ~ cvd, data = .)
+```
+]
+.panel[.panel-name[output]
+
+
+```
+## 
+## 	Kruskal-Wallis rank sum test
+## 
+## data:  icuStay by cvd
+## Kruskal-Wallis chi-squared = 0.29625, df = 3, p-value = 0.9607
+```
+]
+]
+---
+## ICU stay and RoSC
+
+.panelset[
+.panel[.panel-name[code]
+
+
+```r
+#-----------------------------------------------------------------
+# ICU Stay &amp; Time to Return of Spontaneous Circulation (RoSC)
+#
+cardiacDF %&gt;%
+  ggplot( aes(x = timeToRoscMin, y = icuStay) ) +
+  geom_point( colour = "darkgreen") +
+  scale_y_log10() +
+  geom_smooth( method = "lm" , colour = "black") +
+  labs( x        = "Time to Spontaneous Circulation (mins)",
+        y        = "Days in ICU on log scale",
+        title    = "Length of ICU stay by time to ROSC faceted by death in hospital",
+        subtitle = "evidence of an interaction") +
+  facet_grid( hospDeath ~ .) 
+```
+]
+.panel[.panel-name[output]
+
+&lt;img src="slides_demo1_files/figure-html/unnamed-chunk-26-1.png" width="600px" height="450px" style="display: block; margin: auto;" /&gt;
+]
+]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%",
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

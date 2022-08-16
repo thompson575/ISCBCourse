@@ -1,0 +1,13 @@
+.title-slide {
+  background-color: #abebe8;
+  color:  #4a2d39;
+}
+.title-slide h1 {
+  color:  #963960;
+}
+.title-slide h2 {
+  color:  #963960;
+}
+.tiny .remark-code { 
+  font-size: 75% !important;
+}

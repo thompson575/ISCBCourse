@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data Analysis with R and the tidyverse</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="John Thompson" />
+    <script src="slides_lecture1_files/header-attrs/header-attrs.js"></script>
+    <link href="slides_lecture1_files/panelset/panelset.css" rel="stylesheet" />
+    <script src="slides_lecture1_files/panelset/panelset.js"></script>
+    <script src="slides_lecture1_files/xaringanExtra-webcam/webcam.js"></script>
+    <script id="xaringanExtra-webcam-options" type="application/json">{"width":"200","height":"200","margin":"1em"}</script>
+    <link href="slides_lecture1_files/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="slides_lecture1_files/tile-view/tile-view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="my_theme.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Data Analysis with R and the tidyverse
+]
+.subtitle[
+## Lecture 1
+]
+.author[
+### John Thompson
+]
+.institute[
+### University of Leicester
+]
+.date[
+### 21st August 2022
+]
+
+---
+
+
+
+
+
+
+
+
+## The Pipe
+
+Convert Object x into Object y
+.panelset[
+.panel[.panel-name[Step by Step]
+
+```r
+a &lt;- fun1(x)
+b &lt;- fun2(a)
+y &lt;- fun3(b)
+```
+
+workspace becomes cluttered with intermediate objects
+]
+.panel[.panel-name[In one step]
+
+```r
+y &lt;- fun3(fun2(fun1(x)))
+```
+
+Difficult to read and error prone
+]
+.panel[.panel-name[Pipe]
+
+```r
+x %&gt;%
+  fun1() %&gt;%
+  fun2() %&gt;%
+  fun3()   -&gt; y
+```
+
+Each returned object is fed (piped) into the next function
+
+Most R users code the pipe as
+
+```r
+y &lt;- x %&gt;%
+       fun1() %&gt;%
+       fun2() %&gt;%
+       fun3()
+```
+]
+.panel[.panel-name[First argument]
+The piped object becomes the **first argument** of the next function  
+
+
+```r
+x %&gt;%
+  fun1(y, z)  -&gt;  w
+```
+
+is the same as  
+
+```r
+w &lt;- fun1(x, y, z)
+```
+]
+.panel[.panel-name[The dot]
+You can force a different position using **the dot**
+
+
+```r
+x %&gt;%
+  fun1(y, ., z)  -&gt;  w
+```
+
+is the same as  
+
+
+```r
+w &lt;- fun1(y, x, z)
+```
+
+]
+]
+---
+## Data frames and tibbles
+
+A **data frame** is a rectangular data object  
+
+- rows represent observations  
+- cols represent variables  
+
+A **tibble** is the tidyverse version of a data frame
+
+```r
+tibble( id     = 1:4,
+        age    = c(39, 45, 22, 56),
+        gender = c("m", "f", "f", "m") ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 4 × 3
+##      id   age gender
+##   &lt;int&gt; &lt;dbl&gt; &lt;chr&gt; 
+## 1     1    39 m     
+## 2     2    45 f     
+## 3     3    22 f     
+## 4     4    56 m
+```
+
+---
+## Reading an Excel file
+
+
+.panelset[
+.panel[.panel-name[read_excel()]
+Use the **read_excel()** function from the **readxl** package
+
+
+```r
+# load the package
+library(readxl)
+
+# read the Excel file
+myDF &lt;- read_excel(path = "C:/Projects/icu/data/myFile.xlsx") 
+```
+]
+.panel[.panel-name[help]
+Obtain help on any available function using *?functionName*
+
+
+```r
+?read_excel
+```
+
+
+```r
+read_excel(
+  path,
+  sheet = NULL,
+  range = NULL,
+  col_names = TRUE,
+  col_types = NULL,
+  na = "",
+  trim_ws = TRUE,
+  skip = 0,
+  n_max = Inf,
+  guess_max = min(1000, n_max),
+  progress = readxl_progress(),
+  .name_repair = "unique"
+)
+```
+]
+.panel[.panel-name[Quick and Dirty]
+
+When argument names are not specified, the arguments are assigned in order.
+
+It is common to see,
+
+```r
+myDF &lt;- read_excel("C:/Projects/icu/data/myFile.xlsx") 
+```
+
+Best practice is to specify the argument names. (principle of literate programming)
+]
+]
+---
+## Data Cleaning
+
+The **janitor** package contains functions for cleaning a tibble, including  
+
+- **clean_names()** creates column names in a consistent style  
+- **remove_empty()** removes blank rows and/or columns  
+- **remove_constant()** removes columns when every value is the same  
+
+---
+## Data Cleaning example
+
+.panelset[
+.panel[.panel-name[Messy Excel]
+&lt;img src = "C:/Projects/RCourse/ISCB/site/figs/messy_data.jpg" /&gt;
+
+]
+.panel[.panel-name[read_excel()]
+
+```r
+library(readxl)
+
+read_excel("../data/messy_data.xlsx") %&gt;%
+  print()
+```
+
+```
+## # A tibble: 6 × 6
+##   ID    `patient age` sex   `Blood Pressure` SYSTOLIC DIASTOLIC
+##   &lt;chr&gt;         &lt;dbl&gt; &lt;chr&gt; &lt;lgl&gt;               &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17              35 F     NA                    130        95
+## 2 A18              42 F     NA                    115        80
+## 3 &lt;NA&gt;             NA &lt;NA&gt;  NA                     NA        NA
+## 4 A19              76 M     NA                    145       110
+## 5 A20              42 M     NA                    125        90
+## 6 A21              27 M     NA                    140       100
+```
+
+missing values denoted by **NA**  
+two word names enclosed in back ticks, e.g. **`patient age`**
+]
+.panel[.panel-name[read and clean]
+
+```r
+library(janitor)
+
+read_excel("../data/messy_data.xlsx") %&gt;%
+  clean_names(case = "lower_camel") %&gt;%
+  remove_empty() %&gt;%
+  print()
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+
+**case="snake"** is a popular option, **patient_age**
+]
+]
+---
+## Saving in rds format
+
+.panelset[
+.panel[.panel-name[rds]
+- Save the cleaned data  
+- Will not need to clean it again  
+- re-cleaning would invite inconsistencies  
+
+**rds** is a fast, compact way of saving data  
+
+Save with **write_rds()** and read back with **read_rds()**
+]
+.panel[.panel-name[Example]
+
+```r
+# read the messy data
+read_excel("data/rawData/messy_data.xlsx") %&gt;%
+  # clean the data
+  clean_names(case = "lower_camel") %&gt;%
+  remove_empty() %&gt;%
+  # save in rds format
+  write_rds("data/rData/clean_data.rds")
+```
+
+
+```r
+# read and print the clean data
+cleanDF &lt;- read_rds("data/rData/clean_data.rds")
+
+print(cleanDF)
+```
+]
+]
+---
+## Data manipulation
+
+**dplyr** is a tidyverse package for manipulating data in tibbles.
+
+The functions are designed to work with the pipe.
+
+The most important functions are,  
+
+- **rename()**: change the name of a column (variable)    
+- **select()**: choose a subset of the columns (variables)  
+- **filter()**: choose a subset of the rows (subjects)  
+- **mutate()**: alter a column (variable) by calculation or create a new column   
+- **group_by()**: group together the rows (subjects) into subsets   
+- **summarise()**: calculate summary statistics   
+
+---
+## Filter  
+
+subset of the rows
+
+.panelset[
+.panel[.panel-name[Raw Data]
+
+```r
+cleanDF &lt;- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+]
+.panel[.panel-name[filter sex]
+
+```r
+cleanDF %&gt;%
+  filter( sex == "F" ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 2 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+```
+]
+.panel[.panel-name[filter age]
+
+```r
+cleanDF %&gt;%
+  filter( patientAge &gt; 40 ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 3 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A18           42 F          115        80
+## 2 A19           76 M          145       110
+## 3 A20           42 M          125        90
+```
+]
+]
+---
+## Select or Rename Variables
+
+.panelset[
+.panel[.panel-name[Raw Data]
+
+```r
+cleanDF &lt;- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+]
+.panel[.panel-name[select]
+
+```r
+cleanDF %&gt;%
+  filter( sex == "M" ) %&gt;%
+  select( systolic, diastolic ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 3 × 2
+##   systolic diastolic
+##      &lt;dbl&gt;     &lt;dbl&gt;
+## 1      145       110
+## 2      125        90
+## 3      140       100
+```
+]
+.panel[.panel-name[rename]
+
+```r
+cleanDF %&gt;%
+  rename( age    = patientAge,
+          gender = sex,
+          sbp    = systolic,
+          dbp    = diastolic) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 5 × 5
+##   id      age gender   sbp   dbp
+##   &lt;chr&gt; &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1 A17      35 F        130    95
+## 2 A18      42 F        115    80
+## 3 A19      76 M        145   110
+## 4 A20      42 M        125    90
+## 5 A21      27 M        140   100
+```
+]
+]
+---
+## Summarise and Group by
+
+.panelset[
+.panel[.panel-name[Raw Data]
+
+```r
+cleanDF &lt;- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+]
+.panel[.panel-name[summarise]
+
+```r
+cleanDF %&gt;%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 1 × 3
+##       n sbpMean sbpStd
+##   &lt;int&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1     5     131   11.9
+```
+]
+.panel[.panel-name[group_by]
+
+```r
+cleanDF %&gt;%
+  group_by( sex ) %&gt;%
+  summarise( n         = n(),
+             sbpMean   = mean(systolic),
+             sbpStd    = sd(systolic) ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 2 × 4
+##   sex       n sbpMean sbpStd
+##   &lt;chr&gt; &lt;int&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1 F         2    122.   10.6
+## 2 M         3    137.   10.4
+```
+]
+]
+
+---
+## Mutate
+
+.panelset[
+.panel[.panel-name[Raw Data]
+
+```r
+cleanDF &lt;- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+]
+.panel[.panel-name[mutate]
+
+```r
+# calculate the mean arterial pressure
+cleanDF %&gt;%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 5 × 6
+##   id    patientAge sex   systolic diastolic   map
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;
+## 1 A17           35 F          130        95 107. 
+## 2 A18           42 F          115        80  91.7
+## 3 A19           76 M          145       110 122. 
+## 4 A20           42 M          125        90 102. 
+## 5 A21           27 M          140       100 113.
+```
+]
+.panel[.panel-name[combination]
+
+```r
+cleanDF %&gt;%
+  rename( sbp = systolic) %&gt;%
+  select( id, sbp) %&gt;%
+  mutate( mSBP      = mean(sbp),
+          deviation = sbp - mSBP) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 5 × 4
+##   id      sbp  mSBP deviation
+##   &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17     130   131        -1
+## 2 A18     115   131       -16
+## 3 A19     145   131        14
+## 4 A20     125   131        -6
+## 5 A21     140   131         9
+```
+]
+]
+---
+## Visualisation
+
+**ggplot2** is the package of functions for graphics  
+
+Key principles of ggplot2
+
+- plots are build up in layers  
+- the layers are joined by a **+**  
+- when options are not specified explicitly, their values are inherited from the previous layer   
+
+Terminology  
+
+- aspects of the plot that **depend on the data** are specified with the aesthetic function, `aes()`  
+- the contents of the plot (lines, points, bars etc.) are controlled by functions with names that start with `geom_`  
+---
+## Scatter plots
+.panelset[
+.panel[.panel-name[Raw Data]
+
+```r
+cleanDF &lt;- read_rds("../data/clean_data.rds")
+
+print(cleanDF)
+```
+
+```
+## # A tibble: 5 × 5
+##   id    patientAge sex   systolic diastolic
+##   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+## 1 A17           35 F          130        95
+## 2 A18           42 F          115        80
+## 3 A19           76 M          145       110
+## 4 A20           42 M          125        90
+## 5 A21           27 M          140       100
+```
+]
+.panel[.panel-name[simple]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point()
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-31-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[colour &amp; size]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3)
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-32-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[shape &amp; labels]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic, colour = sex)) +
+  geom_point( size = 3, shape = 17 ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-33-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[swap]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic, shape = sex)) +
+  geom_point( size = 3, colour = "blue" ) +
+  labs(x     = "Age (years)", 
+       y     = "DBP", 
+       title = "Diastolic Blood Pressure by Patient's age")
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-34-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Smooths
+
+.panelset[
+.panel[.panel-name[lowess]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth()
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-35-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[regression]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm")
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-36-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Facets
+
+.panelset[
+.panel[.panel-name[columns]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm") +
+  facet_grid( . ~ sex) 
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-37-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[rows]
+
+```r
+cleanDF %&gt;%
+  ggplot( aes(x = patientAge, y = diastolic)) +
+  geom_point() + 
+  geom_smooth( method="lm") +
+  facet_grid( sex ~ .) 
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-38-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Histogram
+
+.panelset[
+.panel[.panel-name[histogram]
+
+```r
+cleanDF %&gt;%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %&gt;%
+  ggplot( aes(x = map ) ) +
+    geom_histogram( bins = 5, fill = "steelblue" ) +
+    labs(x     = "MAP", 
+         title = "Mean Arterial Pressure")
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-39-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+.panel[.panel-name[density]
+
+```r
+cleanDF %&gt;%
+  mutate( map = (systolic + 2 * diastolic) / 3  ) %&gt;%
+  ggplot( aes(x = map ) ) +
+    geom_density( bins = 5, fill = "steelblue" ) +
+    labs(x     = "MAP", 
+         title = "Mean Arterial Pressure")
+```
+
+&lt;img src="slides_lecture1_files/figure-html/unnamed-chunk-40-1.png" width="600px" style="display: block; margin: auto;" /&gt;
+]
+]
+---
+## Tests in a pipe
+
+.panelset[
+.panel[.panel-name[t-test]
+
+```r
+cleanDF %&gt;%
+  t.test(systolic ~ sex, data = .) %&gt;%
+  print()
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  systolic by sex
+## t = -1.4741, df = 2.2354, p-value = 0.2658
+## alternative hypothesis: true difference in means between group F and group M is not equal to 0
+## 95 percent confidence interval:
+##  -51.61179  23.27845
+## sample estimates:
+## mean in group F mean in group M 
+##        122.5000        136.6667
+```
+]
+.panel[.panel-name[Wilcoxon rank sum]
+
+```r
+cleanDF %&gt;%
+  wilcox.test(systolic ~ sex, data = .) %&gt;%
+  print()
+```
+
+```
+## 
+## 	Wilcoxon rank sum exact test
+## 
+## data:  systolic by sex
+## W = 1, p-value = 0.4
+## alternative hypothesis: true location shift is not equal to 0
+```
+]
+]
+---
+## rmarkdown
+
+**markdown**, a simple markup language, plus **chunks** of R code.  
+
+**YAML** header controls the document style   
+
+RStudio contains many short-cuts to aid report production.  
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%",
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

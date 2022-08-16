@@ -1,0 +1,568 @@
+--- 
+title:  "Lecture 3: Glioma and the Cytokine Profile"
+editor_options: 
+  chunk_output_type: console
+---
+
+<br>
+
+This session is based on the paper,
+
+Nijaguna, M.B., Patil, V., Hegde, A.S., Chandramouli, B.A., Arivazhagan, A., Santosh, V. and Somasundaram, K., 2015.  
+**An eighteen serum cytokine signature for discriminating glioma from normal healthy individuals.**  
+PloS one, 10(9), p.e0137524.  
+
+The paper can be found at https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0137524 and the authors have made their data available by placing two Excel files in the dryad repository (https://datadryad.org/) at https://datadryad.org/stash/dataset/doi:10.5061/dryad.8jq92.  
+
+Gliomas are a type of brain tumour with a poor survival rate. In this study healthy patients were compared with patients with grade II tumours (Diffuse Astrocytomas, DA), grade III tumours (Anaplastic Astrocytomas, AA) and grade IV timours (Glioblastomas, GBM). Blood samples were taken and the levels of 48 different cytokines were measured. Cytokines are small molecules used to pass signals between cells. They are often associated with the immune system and are indicators of inflammation or infection.
+
+The aim of the study was to assess whether the profile of cytokine levels would help distinguish between healthy patients and the different grades of gliomas.
+
+In this session we will cover,
+ 
+* Working with lists  
+* Blocks of code within a pipe  
+* ifelse()  
+* Data joins      
+* Plotting with factors    
+* Repeating the same calculation    
+* Model fitting within a pipe      
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+# Working with lists
+
+A `list` is a data object that contains other data objects. A `list` can be thought of as a vector of objects of different types.  
+
+Lists are particularly important because functions in R are only allowed to return a single object. Most functions make a host of calculations and pack their results into a list, which they return. If you want to use a complex function, then you need to be able to handle the returned list.
+
+## Creating a list
+
+The objects in the list may be given `internal names` when the list is created. Here `a` is a single number that is saved in the list with the internal name `count`.
+
+```{r}
+a  <- 3
+b  <- c("London", "Sydney")
+c  <- c(3, 4, 5, 6)
+
+myList <- list(count   = a, 
+               cities  = b,
+               numbers = c)
+
+print(myList)
+```
+
+Objects can be extracted `by name` using the `$` notation by writing `listName$internalName`. For example,
+
+```{r}
+myList$cities
+```
+
+Objects can also be extracted `by position` using double square brackets `[[ ]]`
+
+```{r}
+myList[[2]]
+```
+
+It is possible to create a list without specifying internal names, in which case extraction by position is the only option.
+
+```{r}
+mySecondList <- list(a, b, c)
+
+print(mySecondList)
+```
+
+## Unpacking a list
+
+To unpack a list, you must first discover what it contains.
+
+As an example, consider the list returned by the `t.test()` function.
+
+```{r}
+tibble( id    = 1:8,
+        sex   = rep(c("m", "f"), each=4),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  print() %>%
+  t.test(sbp ~ sex, data = .) -> myT
+
+print(myT)
+```
+
+The `t.test()` calculates many values, `t`, `df`, `p-value`, `confidence limits` etc. The `print()` function unpacks this list and prints it in a readable form.
+
+The structure of the list can be discovered using the `str()` function
+
+```{r}
+str(myT)
+```
+
+`myT` is a list of 10 items with internal names, `statistic`, `parameter` etc., so the items can be extracted using the $ notation.
+
+```{r}
+myT$p.value
+```
+
+or the double square bracket notation
+
+```{r}
+myT[[3]]
+```
+
+## Attributes
+
+The structure of `myT` showed that some of the objects in the returned list have `attributes`, denoted by `attr`.
+
+An attribute is a piece of *metadata* stored alongside a data object. Metadata is any information that helps us understand the data object.
+
+Let's create a simple vector of length measurements and save the unit of measurement as a piece of metadata.
+
+```{r}
+width <- c(7.5, 12.25, 9.75)
+attr(width, "units") <- "cm"
+
+str(width)
+```
+
+To extract an attribute, we use its name
+```{r}
+attr(width, "units")
+```
+
+In the case of the t-test, the data object `conf.int` also has an attribute
+```{r}
+str(myT$conf.int)
+```
+
+The CI for the difference in mean SBP, women - men, is (3.87, 33.63) and the attribute tells us that this is a 95% CI.
+
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Blocks of code in a pipe
+
+<br>
+
+### The basic dot notation
+
+We saw in lecture 1 that the dot notation is used when the input is `not the first` argument of the next function. So
+```{r eval=FALSE}
+x %>%
+  f(y, ., z)
+```
+
+is equivalent to `f(y, x, z)`.
+
+<br>
+
+### Dots in curly brackets
+
+When the next line(s) of code are wrapped in curly brackets {}, the dot still stands for the input, but it does not need to be the argument of a function.
+
+In this example, I extract the estimate and its attribute from a t-test and paste them together into a single string using the `paste()` function.
+```{r}
+myT %>%
+  { 
+    # extract the estimate
+    e    <- .$estimate
+    # extract the names attribute of the estimate
+    desc <- attr(.$estimate, "names")
+    # paste together the 1st estimate and the 1st name
+    paste(desc[1], "=", e[1])
+  }  %>%
+  print()
+```
+
+Within the block defined by the curly brackets,   
+
+* the dot always refers to the object passed into the block  
+* the dot may be used multiple times
+* the dot does not need to be an argument of a function  
+
+Often blocks are used when there is only one line of code, but the passed object is not a function's argument. Here is a slightly artificial example,  
+```{r}
+myT %>%
+  { .$p.value } %>%
+  round(4) %>%
+  print()
+```
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Conditional changes with `ifelse()`
+
+<br> 
+
+`ifelse()` is used to change selected items in a vector. The general syntax is
+```{r eval=FALSE}
+ifelse( CONDITION, VALUE IF TRUE, VALUE IF FALSE)
+```
+
+Here is a simple example in which negative values are replaced by missing values.
+```{r}
+# the test vector
+x <- c( 3, -2, 4, 6, -5)
+
+# if x < 0 use the value NA, else use the value from x
+ifelse( x < 0, NA, x)
+```
+
+Often `ifelse()` is used inside `dplyr`'s `mutate()`
+
+Suppose that the data in `sbpDF` were sent to me by a colleague, but that subsequently I discovered that subject 7's correct age is 53 and not 35. It would not be reproducible if I edited the data manually, so I make the change in a script.
+```{r}
+# Original data
+tibble( id    = 1:8,
+        sex   = c("m", "f", "m", "m", "f", "f", "f", "f"),
+        age   = c( 45,  37,  25,  36,  52,  29,  35,  48),
+        sbp   = c(135, 130, 120, 115, 155, 140, 145, 135) ) %>%
+    mutate( sex = factor(sex, levels = c("m", "f"),
+                            labels = c("male", "female"))) -> rawDF
+
+# correct the age of subject 7
+rawDF %>%
+  mutate( age = ifelse( id == 7, 53, age) ) %>%
+  print() -> sbpDF
+```
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Data Joins
+
+<br>
+
+A `join` is a method for collecting together data from two data frames.
+
+My example combines data from two visits in a longitudinal study of blood pressure. Here is the baseline (visit 1) patient data
+```{r}
+# data from visit 1
+tibble( id     = 1:5,
+        age    = c(32, 45, 72, 37, 55),
+        sex    = c("m", "m", "f", "f", "m"),
+        sbp_v1 = c(120, 135, 125, 140, 125)) %>%
+  print()   -> visit1DF
+```
+
+and here is the follow-up data from visit 2. Patient 3 was lost to follow-up and patient 6 missed the baseline visit.
+```{r}
+# data from visit 2
+tibble( id     = c(1, 2, 4, 5, 6),
+        sbp_v2 = c(125, 130, 150, 135, 130)) %>%
+  print()   -> visit2DF
+```
+
+Both data frames contain and identifier `id` that can be used to match up the subject. The variable(s) used for matching data frames are called `keys`. 
+
+In the language of the tidyverse, data frames are combined using a **join**
+
+The general syntax for joining data frames A and B is 
+```{r eval = FALSE}
+join(A, B, by = "key")
+```
+
+Every `join` must allow for the possibility that a match is missing from one or other of the data frames.
+
+The six different joins are illustrated using `visit1DF` and `visit2DF`. It is unlikely that you will remember the definitions of the six joins, just look them up when you need them.
+
+### left_join()
+
+The most widely used join is `left_join()`, which combines all of the rows of A and any matches from B  
+```{r}
+left_join(visit1DF, visit2DF, by = "id")
+```
+
+`left_join` keeps all the rows of visit1DF, so a missing value is inserted in the follow-up data for patient 3.
+
+### right_join()
+
+combines all of the rows of B and any matches from A  
+```{r}
+right_join(visit1DF, visit2DF,  by = "id")
+```
+
+Since only the follow-up rows are kept, patient 3 is dropped.
+
+### full_join()
+
+combines all of the rows found in either A or B. 
+```{r}
+full_join(visit1DF, visit2DF, by = "id")
+```
+
+### inner_join()
+
+only combines the rows present in both A and B  
+```{r}
+inner_join(visit1DF, visit2DF, by = "id")
+```
+
+### semi_join()
+
+extracts the rows of A that have a match in B (but the information from B not included)  
+```{r}
+semi_join(visit1DF, visit2DF, by = "id")
+```
+
+### anti_join()
+
+extracts the rows rows of A that do not have a match in B  
+```{r}
+anti_join(visit1DF, visit2DF, by = "id")
+```
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Plotting factors with ggplot2
+
+<br>
+
+## Bar Plots
+
+Bar plots (also called bar charts) are the simplest way of plotting a factor. 
+
+There are two types of bar plot  
+
+* Type I: plots the frequencies, e.g. number of men and number of women  
+* Type II: plots some calculated statistic, e.g. mean ages of men and women
+
+<br>
+
+### Bar plot of frequency
+
+In the example, the bar height represents the number of men and women in the `sbpDF` data frame.
+```{r}
+# Type I bar plot of sex
+sbpDF %>%
+  ggplot( aes(x = sex)) +
+  geom_bar( fill = "steelblue") +
+  labs(title = "Numbers of men and women")
+```
+
+<br>
+
+### Bar plot of a statistic
+
+The bar height shows the average systolic blood pressure of men and women 
+```{r}
+# Type II bar plot of the average sbp by sex
+sbpDF %>%
+  group_by( sex ) %>%
+  summarise( SBP = mean(sbp)) %>%
+  ggplot( aes(x = sex, y = SBP)) +
+  geom_bar( stat = "identity", fill = "steelblue") +
+  labs(title = "Mean SBP of men and women")
+```
+
+<br>
+
+## Boxplots
+
+Boxplots are more informative than type II bar plots as they show the distribution of the variable of interest rather than a single statistic.  
+
+The box shows the range of the middle 50% of the data with a horizontal line at the median. The lines extend to the range of the data, with any outliers shown as single points.
+
+```{r}
+# Boxplot of sbp by sex
+sbpDF %>%
+  ggplot( aes(x = sex, y = sbp)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of SBP of men and women")
+```
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+
+# Repeating calculations
+
+<br>
+
+Loops are a way of repeating a calculation. As an example, suppose that we wanted to draw a bootstrap sample from the `sbpDF` in order to calculate the bootstrap median blood pressure.
+
+The function `sample_n()` draws a sample of fixed size from the rows of a data frame.
+```{r}
+# seed so that the random draw is reproducible
+set.seed(982)
+
+# code to select a random bootstrap sample
+sbpDF %>%
+  sample_n(size = 8, replace = TRUE) %>%
+  print() %>%
+  summarise( m = median(sbp)) %>%
+  print()
+```
+
+A proper bootstrap analysis would repeat this process many times and look at the distribution of the medians. We could do this with a `for` loop
+
+```{r}
+# set seed for reproducibility
+set.seed(982)
+
+# draw 5 bootstrap samples
+for( i in 1:5 ) {
+  sbpDF %>%
+    sample_n(size = 8, replace = TRUE) %>%
+    summarise( m = median(sbp)) %>%
+    print()
+}
+```
+
+Here `i` is an index and runs from 1 to 5, so the contents of the loop enclosed in the curly brackets are repeated 5 times. `i` is a popular name for the index but you could call it anything you like.
+
+<br>
+
+## Accumulating results
+
+Often when we repeat a calculation in a loop, we want to collect the results and save them in a new data object
+
+It is important to create the data object for saving the results `before` entering the loop.
+
+In this code, `pull()` is used to extract a column from the data frame so that it can be saved elsewhere.
+
+```{r}
+# data frame for saving 100 bootstrap medians
+tibble( index  = 1:100,
+        median = rep(NA, 100)) %>%
+  print() -> resultsDF
+
+# seed for reproducibility
+set.seed(982)
+
+# repeat the calculation 100 times
+for( i in 1:100 ) {
+  sbpDF %>%
+    sample_n(size = 8, replace = TRUE) %>%
+    summarise( m = median(sbp)) %>%
+    pull(m)  -> resultsDF$median[i]
+}
+
+# summarise the results
+resultsDF %>%
+  print() %>%
+  summarise( m = mean(median),
+             s = sd(median)) %>%
+  print()
+```
+
+s is the bootstrap standard error of the median.
+
+An alternative way of extracting the median is
+```{r eval=FALSE}
+# repeat the calculation 100 times
+for( i in 1:100 ) {
+  sbpDF %>%
+    sample_n(size = 8, replace = TRUE) %>%
+    summarise( m = median(sbp)) %>%
+    { .$m }  -> resultsDF$median[i]
+}
+```
+
+<br>
+
+### More on loops
+
+`for` loops belong in base R and there are better ways of repeating calculations in the tidyverse. However,
+
+* loops are widely used because most people learn base R before they meet the tidyverse    
+* the tidyverse methods for repeating calculations require the use of user-written functions, which are beyond the scope of this introduction.  
+
+The tidyverse package for repeating calculations within a pipe is called `purrr`.
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+
+# Model Fitting in a Pipe
+
+<br>
+
+In R, regression models are fitted using the linear model function `lm()`.
+
+```{r}
+# fit a linear model
+sbpDF %>%
+  lm( sbp ~ age + sex, data = .) %>%
+  print()
+```
+
+`lm()` comes with its own print format, which is what we have here, but it only shows a small selection of the information returned as a list by `lm()`. You can use `str()` to look at the contents of the returned list but be warned, it is long and complex.
+
+The package `broom` was written to simplify the extraction of information after a model fit. The package has three functions, `tidy()`, `glance()` and `augment()`.
+
+`tidy()` creates a table of regression coefficients.
+```{r}
+library(broom)
+
+sbpDF %>%
+  lm( sbp ~ age + sex, data = .) %>%
+  tidy() %>%
+  print()
+```
+
+`glance()` creates measures of goodness of fit
+```{r}
+sbpDF %>%
+  lm( sbp ~ age + sex, data = .) %>%
+  glance() %>%
+  print()
+```
+
+`augment()` creates fitted values and residuals
+```{r}
+sbpDF %>%
+  lm( sbp ~ age + sex, data = .) %>%
+  augment() %>%
+  print()
+```
+
+Each `broom` function returns a data frame, so we can continue the pipe after a `broom` function has been used
+
+```{r}
+sbpDF %>%
+  lm( sbp ~ age + sex, data = .) %>%
+  augment() %>%
+  ggplot( aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline( yintercept = 0) +
+  theme_bw()
+```
+
+The `broom` functions work with most of R's model fitting functions, including,
+
+* `glm()` the function that fits a generalised linear model  
+* `coxph()` for Cox's proportional hazards model  
+* `gam()` for generalised additive models  
+* `ivreg()` for instrumental variable regression  
+* `nls()` for non-linear least squares
+
+In total, `broom` works with around 100 model fitting functions.
+

@@ -1,0 +1,501 @@
+--- 
+title:  "Lecture 2: Cardiovascular risk factors"
+---
+
+<br>
+
+# Introduction 
+
+<br>
+
+# Introduction 
+
+This session is based on the paper,
+
+Smailhodzic, D., van Asten, F., Blom, A.M., Mohlin, F.C., den Hollander, A.I., van de Ven, J.P., van Huet, R.A., Groenewoud, J.M., Tian, Y., Berendschot, T.T. and Lechanteur, Y.T., 2014.  
+**Zinc supplementation inhibits complement activation in age-related macular degeneration.**  
+PloS one, 9(11), p.e112682.
+
+The paper can be found at https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0112682 and the authors have made their data available by placing an Excel file in the dryad repository (https://datadryad.org/) at https://datadryad.org/stash/dataset/doi:10.5061%2Fdryad.3gq6t  
+
+In 2001, AREDS (Age-Related Eye Disease Study) reported that zinc supplementation slows the progression of age-related macular degeneration (AMD). This finding has been confirmed in several large population studies. The mechanism by which zinc affects AMD progression is unclear, but one theory is that the zinc affects the complement system.
+
+The complement system is a part of the immune system that works alongside the antibodies. There are many stages in the action of the complement system and they are labelled as C1, C2, C3 etc. This study had the specific aim of investigating the effect of zinc on the C3 and C5 components, the levels of which can be measured in the blood.  
+
+In this session we will cover,
+ 
+* Vectors in R  
+* Tidy data in long and wide format    
+* Calculations with missing values   
+* Defining factors  
+* Tables with the flextable package  
+* Themes in ggplot2  
+* Error bars in ggplot2
+* Inline code in rmarkdown      
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+# Creating a vector in R
+
+<br>
+
+Base R's, combine function, `c()`, is used to create vectors
+```{r}
+v <- c(2.3, 4.6, 1.9)
+print(v)
+```
+
+Vector can also contain character strings
+```{r}
+v <- c("Jack", "Ali", "Margaret", "Jane")
+print(v)
+```
+
+You *cannot mix types* in a vector. An object called a *list* is used to mix types of object (see Lecture 3).
+
+Values can be extracted from a vector using an index in square brackets, [].
+```{r}
+v[3]
+```
+
+Giving a vector of index values will extract multiple values.
+```{r}
+v[c(1,4)]
+```
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Tidy data
+
+<br>
+
+The `tidyverse` works best when data are stored in `tidy format`. This format was described in a 2014 paper that can be downloaded from https://www.jstatsoft.org/article/view/v059i10. It is a very similar to the format used in relational databases.  
+
+The idea of `tidy format` is to arrange data into tables (data frames or tibbles in R) so that,
+
+* each row represents a different subject or observation    
+* each column represents a different variable or measurement    
+* data are not duplicated in different tables
+
+<br>
+
+## Wide and Long data frames
+
+When we have repeat measures there are two tidy ways to store the data.
+
+In the example, each person has their SNP measured at baseline and again at follow-up.
+
+Here are the data in `wide` format. The tibble is created directly using the `tibble()` function.  
+```{r}
+tibble( id           = 1:4,
+        age          = c(37, 23, 62, 55),
+        sbp_baseline = c(135, 120, 155, 140),
+        sbp_followup = c(125, 115, 140, 135)) %>%
+  print() -> wideDF
+```
+
+Rows are people, `id` is an identifier and `age`, and the two `sbp`'s are the variables.
+
+The alternative is to save the data in `long` format.
+
+To save some typing, I have created the tibble using the repeat function, `rep()`.
+```{r}
+tibble( id    = rep(1:4, each=2),
+        visit = rep( c("baseline", "followup"), times=4),
+        age   = rep( c(37, 23, 62, 55), each=2),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  print() -> longDF
+```
+
+Rows are person-visits,`id` and `visit` are identifiers and `age` and `sbp` are the variables.
+
+Most tidyverse functions work better when the data are stored in `long` format.
+
+## Converting between long and wide formats
+
+The `tidyr` package is part of the tidyverse and contains two functions  
+
+* `pivot_longer` to convert *wide to long*  
+* `pivot_wider`  to convert *long to wide*    
+
+
+First, I convert long to wide format so that each treatment is in a different column.
+
+```{r}
+longDF %>%
+   pivot_wider( names_from  = visit, 
+                values_from = sbp   ) %>%
+   print()
+```
+
+The syntax says to take the new column names from the `visit` variable and the values from `sbp`.
+
+To convert wide to long, we have to create new column names. New names are given in quotes because they do not exist yet as variables.
+
+```{r}
+wideDF %>%
+  pivot_longer( cols      = c(sbp_baseline, sbp_followup), 
+                names_to  = "visit", 
+                values_to = "sbp") %>%
+  print()
+```
+
+The rule is that when a variable already exists you just give its name as in `names_from = visit`, but when you are proposing a name for a new variable it is places in quotes, as in `names_to = "visit"`.  
+
+It would be nice to be able to improve the labels of the visits. As `visit` is a character string, we can do this with the function `str_replace()`
+```{r}
+wideDF %>%
+  pivot_longer( cols      = c(sbp_baseline, sbp_followup), 
+                names_to  = "visit", 
+                values_to = "sbp") %>%
+  mutate( visit = str_replace(visit, "sbp_", "")) %>%
+  print()
+```
+
+`str_replace()` comes from the `stringr` package. This tidyverse package has many functions for manipulating strings.
+
+### More on converting between `long` and `wide`  
+
+The pivot functions are replacements for `gather()` (wide to long) and `spread()` (long to wide). gather() and spread() have been around for a long time, so you might well see them in other people's code. However, they were awkward to use and so were replaced by the more straightforward pivot functions.
+
+# Missing Values
+
+<br>
+
+In R, missing values are represented by NA (not available). In the example, the `sbp` of person 3 was not recorded.
+
+```{r}
+tibble( id  = 1:5,
+        sex = c("m", "m", "f", "f", "f"),
+        age = c( 45,  32,  57,  63,  23),
+        sbp = c(125, 130,  NA, 150, 135)) %>%
+  print()   -> sbpDF
+```
+
+There is a function in base R called `is.na()` that tests whether a value is missing. is.na() returns TRUE if the value is missing and FALSE when it is not missing.
+
+In R, `!` is the negation operator, it turns TRUE to FALSE and vice versa
+
+```{r}
+sbpDF %>%
+  mutate( missing  = is.na(sbp),
+          measured = !is.na(sbp)) %>%
+  print()
+```
+
+Filtering keeps values that are TRUE. So the missing `sbp` is kept using
+```{r}
+sbpDF %>%
+  filter( is.na(sbp)) %>%
+  print()
+```
+
+and the measured `sbp`s are kept using  
+```{r}
+sbpDF %>%
+  filter( !is.na(sbp)) %>%
+  print()
+```
+
+## Calculation with NA
+
+Consider what happens when we calculate with a missing value,
+
+```{r}
+sbpDF %>%
+  summarise( n    = n(),
+             mAge = mean(age),
+             mSBP = mean(sbp)) %>%
+  print()
+```
+
+The logic is that since one of the SBPs is missing, the mean cannot be calculated and so R returns a missing value.
+
+One solution is to use the function `filter()` to remove rows with a missing value. 
+
+```{r}
+sbpDF %>%
+  filter( !is.na(sbp)) %>%
+  summarise( n    = n(),
+             mAge = mean(age),
+             mSBP = mean(sbp)) %>%
+  print()
+```
+
+Alternatively, `mean()` has a `na.rm` (remove NA) argument.
+```{r}
+sbpDF %>%
+  summarise( n    = n(),
+             mAge = mean(age, na.rm = TRUE),
+             mSBP = mean(sbp, na.rm = TRUE)) %>%
+  print()
+```
+
+Notice that the value of n changes.
+
+Many of R's functions for calculating statistics have a `na.rm` argument.
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Factors
+
+<br>
+
+When a measurement can only take a limited number of values, it is usually better to save it as a `factor`. 
+
+Factors are particularly useful when you want to create tables or fit statistical models.
+
+In the baseline data `sex` is a character (string) variable 
+```{r}
+sbpDF %>%
+  str()
+```
+
+The function `str()` is used to inspect the structure of a data object.  
+
+`sex` can be converted into a factor using the `factor()` function.
+```{r}
+# --- Convert sex from character to factor ----------------------
+sbpDF %>%
+  mutate( sex = factor(sex)) %>%
+  str() 
+```
+
+R distinguished between the values in the dataset and the labels used in the output. Internally all factors are stored as numbers, 1, 2, etc.
+
+* levels ... values/words taken by the variable in the dataset  
+* labels ... values/words that you want to appear in R output  
+
+So the `factor()` function finds the levels of `sex` by inspecting the data (and placing the values that it finds in alphabetic order, i.e. "f"=1, "m"=2), then it sets the labels equal to the levels
+
+Alternatively, we could define our own labels and order of the levels
+```{r}
+# --- Convert sex from character to factor ----------------------
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  str()
+```
+
+### More on factors
+
+The tidyverse has a package called `forcats` that has lots of functions for working with factors (more on this in lecture 3).  
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Tables with the `flextable` package
+
+When you want to create a table for a report, forget about the headers, labels and footnotes. These can all be added at the end. The first task is to create a data frame or tibble that contains the values that make up the cells of the table.
+
+Let's suppose that we return to the data in `sbpDF`
+```{r}
+print(sbpDF)
+```
+
+and we want a table with two columns (age and sbp) and two rows (male and female) and the cells are to contain the 2x2 averages, e.g. average age of men. First, we calculate the values
+```{r}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  group_by(sex) %>%
+  summarise( meanAge = mean(age, na.rm=TRUE),
+             meanSBP = mean(sbp, na.rm=TRUE)) %>%
+  print()  -> tabDF
+```
+
+To make this look prettier, we need to choose an R tables package; there are lots to choose from and they are all very similar. I use `flextable` because it does everything that I want and has a wide variety of output formats, including html, latex and Word. However, flexibility comes at a price and there are simpler alternatives that are almost as good, for example `gt`, `huxtable`, `xtable` and `ztable`.
+
+Let's just feed `tabDF` into `flextable` and accept the defaults.
+```{r}
+library(flextable)
+
+tabDF %>%
+  flextable()
+```
+
+Next, I make the table look prettier. I change the column labels, add a caption and show the means to 1 decimal place.
+
+```{r}
+tabDF %>%
+  flextable() %>%
+  border_outer() %>%
+  set_header_labels(
+    meanAge = "mean age",
+    meanSBP = "mean SBP"
+  ) %>%
+  set_caption("Average age and SBP of mean and women") %>%
+  colformat_double(
+    j      = c( 2, 3),
+    digits = 1
+  )
+```
+
+
+In `flextable`, i refers to row numbers and j refers to column numbers. So `j=c(2, 3)` means apply the formatting to columns 2 and 3.
+
+
+
+`flextable` has an on-line book at https://ardata-fr.github.io/flextable-book/,
+a list of all flextable functions at https://davidgohel.github.io/flextable/reference/index.html and a gallery of example at https://ardata.fr/en/flextable-gallery/.  
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Themes for ggplot
+
+`ggplot` inherits its options from previous layers, so it needs a set of defaults that create the very lowest level. These defaults are then passed on to subsequent layers unless specify an alternative value.
+
+A `theme` is the set of defaults.
+
+The standard theme for ggplot is called `theme_grey()` and it produces a plot with a grey background and white grid lines. The theme also controls features such as the font, font size and the position of the legend.
+
+Here is the default theme
+```{r fig.height = 4, fig.width = 5, fig.align = "center", warning = FALSE}
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point()
+```
+
+Other themes include `theme_bw()`, `theme_classic()`, `theme_light()`, `theme_dark()` and `theme_minimal()`
+
+Here is theme_light, which is perhaps the most widely used theme.
+```{r fig.height = 4, fig.width = 5, fig.align = "center", warning = FALSE}
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point() +
+  theme_light()
+```
+
+You will find a list of the standard themes at https://ggplot2.tidyverse.org/reference/ggtheme.html, but even more themes are available in a package called `ggthemes` https://www.ggplot2-exts.org/ggthemes.html, for example, here is a theme that makes the plot resemble a graph produced by Stata.
+
+```{r fig.height = 4, fig.width = 5, fig.align = "center", warning = FALSE}
+library(ggthemes)
+
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point() +
+  theme_stata()
+```
+
+The colour of the points in this plot could be made to depend on the data by specifying the colour *within* the `aes()`
+
+```{r fig.height = 4, fig.width = 5, fig.align = "center", warning = FALSE}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  ggplot( aes(x = age, y = sbp, colour = sex)) +
+  geom_point() +
+  theme_bw()
+```
+
+The colours that ggplot uses are part of the set of defaults, as is the position of the legend. We can move the legend by editing the theme and we can pick different colours with `scale_colour_manual()`
+
+```{r fig.height = 4, fig.width = 5, fig.align = "center", warning = FALSE}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  ggplot( aes(x = age, y = sbp, colour = sex)) +
+  geom_point( size = 3) +
+  scale_colour_manual(values = c("male" = "darkgreen", "female" = "orange")) +
+  theme_bw() +
+  theme( legend.position = c(0.2, 0.8), 
+         legend.box.background = element_rect(colour = "blue", size = 2),
+         legend.box.margin = margin(t = 1, l = 1))
+```
+
+Here the legend is placed at `c(0.2, 0.8)`, i.e. 20% of the way to the right, 80% up and it is surrounded by a thick blue box.
+
+There are many different predefined sets of colours that you can choose. Known as `palettes`, these colours have been chosen to work well together. Two popular packages, each with multiple palettes are `color brewer` and `viridis`. You can try out a few options and see the corresponding code in the section called `CHANGING THE COLOR SCALE` at https://r-graph-gallery.com/ggplot2-color.html
+
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Error bars in ggplot2
+
+Let's calculate some summary statistics using the `longDF`.
+
+```{r}
+longDF %>%
+  group_by(visit) %>%
+  summarise( n = n(),
+             m = mean(sbp),
+             s = sd(sbp))  %>%
+  mutate( se = s / sqrt(n),
+          lb = m - 1.96 * se,
+          ub = m + 1.96 * se) %>%
+  print() -> statDF
+```
+
+`lb` and `ub` are the lower and upper bounds of a 95% confidence interval (CI) for the mean.
+
+I plot the mean SBP by visit and then add error bars that represent the CI
+
+```{r}
+statDF %>%
+  ggplot( aes(x=visit, y=m)) +
+  geom_point( size=4) +
+  geom_errorbar( aes(ymin=lb, ymax=ub), width=0.2) +
+  labs( y = "mean SBP") +
+  theme_light()
+```
+<br>
+
+<hr style = "border:2px solid #3559A6"> </hr>
+
+<br>
+
+# Inline code in rmarkdown
+
+<br>
+
+Sometimes it is necessary to place the result of a calculation within a paragraph of text in a report, so called `inline code`. For instance, you might want to write
+```{r eval = FALSE}
+The average age of the patients was 46.837 years.
+```
+where 46.837 comes from a calculation and is saved in the variable `meanAge`.  
+
+This is achieved using single back-ticks and the character `r`.
+```{r eval = FALSE}
+The average age of the patients was `r meanAge` years.
+```
+
+You could control the number of significant figures with the `round()` function.
+```{r eval = FALSE}
+The average age of the patients was `r round(meanAge, 1)` years.
+```
+
+Now the report would read
+```{r eval = FALSE}
+The average age of the patients was 46.8 years.
+```
+

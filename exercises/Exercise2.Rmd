@@ -1,0 +1,63 @@
+--- 
+title:  "Exercise 2: C3 activation in ARMD"
+---
+
+<br>
+<br>
+
+This exercise is based on the paper  
+
+Smailhodzic, D., van Asten, F., Blom, A.M., Mohlin, F.C., den Hollander, A.I., van de Ven, J.P., van Huet, R.A., Groenewoud, J.M., Tian, Y., Berendschot, T.T. and Lechanteur, Y.T., 2014.  
+**Zinc supplementation inhibits complement activation in age-related macular degeneration.**  
+PloS one, 9(11), p.e112682.
+
+The paper can be found at https://journals.plos.org/plosone/article?id = 10.1371/journal.pone.0112682 and the data are available as an Excel file in the dryad repository at https://datadryad.org/stash/dataset/doi:10.5061%2Fdryad.3gq6t  
+
+C3 is a protein that is one component of the immune system. In the presence of a pathogen the C3 molecule breaks and one part, known as C3d, attaches the the pathogen and helps trigger the immune response. The ratio of C3d/C3 is thus a measure of the degree of activation of this aspect of the complement system. 
+
+Previous studies have found high C3d/C3 ratios in patients with age-related macular generation and the study of Smailhodzic et al. was powered to detect a 10% lowering in C3d/C3 when ARMD patients were treated with zinc supplements for 3 months.
+
+C3d/C3 was measured from blood samples taken at baseline before treatment started, at 1, 2 and 3 months during treatment and at 5 and 18 months after treatment had stopped.
+
+<br>
+<br>
+
+Complete the following tasks, making sure that your R script is legible by including comments, choosing descriptive names and paying attention to the layout.
+
+<br>
+
+(a) Follow the check-list in the `introduction` to set up your own project. Download the data from Dryad and save it in the `rawData` folder.  
+
+<br>
+
+(b) Adapt code from the demonstration script `demo2` so as to read the downloaded data, clean it  and save the data in rds format within your own folder structure. Instead of the zinc measurements, include the C3d/C3 ratios. Save your code in a file called `solution2.R`.
+
+<br>
+
+(c) Ratios often have a distribution that is skewed to the right because small values of the denominator can create very large ratios. When this happens, it is often better to analyse the log of the ratio.
+
+Plot histograms of the distribution of C3d/C3 values faceted by visit and compare it with histograms of the log10(C3d/C3) values. Which scale is better?
+
+(d) The plot below is taken from the original paper
+
+<style> .indented { padding-left: 30pt;  } </style>
+
+<div class="indented">
+
+![](figs/c3plot.png)
+
+The zinc component of this plot was drawn in the demonstration. Use ggplot2 to make your own version of the C3d/C3 component of this plot. With the mean shown as squares, 95% CI error bars and a line connecting the means. Show the period of zinc treatment (months 1, 2 and 3) by plotting those points in a different colour.  
+
+</div>
+
+<br>
+
+(e) Test whether there is evidence of a drop in the C3d/C3 ratio between the 3 month visit and the baseline. Is the change consistent with the 10% drop anticipated by the authors when they powered the study?  
+
+<br>
+
+(f) Investigate whether the change in C3d/C3 ratio between the 3 month visit and baseline is related to any of, the CFH or ARMS genotypes.
+
+<br>
+
+(g) Write a brief rmarkdown report on whether or not C3 activation declines in response to treatment with zinc supplements.

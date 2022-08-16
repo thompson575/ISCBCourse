@@ -1,0 +1,275 @@
+--- 
+title: 'Solution 1: Lactate and ICU Stay'
+editor_options:
+  chunk_output_type: console
+output: html_document
+---
+
+<br>
+<br>
+
+**(b) Adapt code from the demonstration script `demo1` so as to read the downloaded data, clean it  and save the data in rds format within your own folder structure. Save your code in a file called `solution1.R`. **
+
+The only changes that you will need to make are to the header and to the file paths
+
+```{r message=FALSE, warning=FALSE}
+#==================================================================
+# File:        solution1.R
+# Project:     icu (project folder C:/Projects/ISCB/icu)
+# Author:      john thompson
+# Date:        22 July 2022
+# Description: Analysis of length of Stay in ICU 
+#==================================================================
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+excel_file <- "C:/Projects/RCourse/ISCB/data/rawData/iesu/Table 1 Enrica.xlsx"
+clean_file <- "C:/Projects/Rcourse/ISCB/data/rData/cardiac.rds"
+
+#-----------------------------------------------------------------
+# Read & clean the data
+#
+read_excel( excel_file ) %>%
+  remove_empty() %>%
+  remove_constant() %>%
+  clean_names( "lower_camel" ) %>%
+  filter( !is.na(id) ) %>%
+  write_rds( clean_file )
+
+#-----------------------------------------------------------------
+# Read clean data
+#
+cardiacDF <- read_rds( clean_file )
+```
+
+**(c) The image below is taken from Table 2 of the paper. It shows the summary statistics for age by in-hospital mortality (`hospDeath`) and by favourable neurological outcome (`favOutcome3MonthCpc1_2_1`) 3 months after admission, which the authors define as not death, a vegetative state or severe neurological impairment. The figures show the median with quartiles in square brackets and the stars indicate a Wilcoxon rank sum test with a p-value below 0.01.**     
+
+<style> .indented { padding-left: 30pt;  } </style>
+
+<br>
+
+
+<div class="indented">
+
+![](figs/table2.png)
+
+<br>
+
+**Add code to solution1.R that confirms all of the statistics in this table.**  
+
+```{r}
+# --------------------------------------------------
+# Statistics for survivors/non-survivors
+#
+cardiacDF %>%
+  group_by(hospDeath) %>%
+  summarise( n   = n(),
+             med = median(age),
+             q1  = quantile(age, prob=0.25),
+             q3  = quantile(age, prob=0.75))
+
+# --------------------------------------------------
+# Test for survivors/non-survivors
+#
+cardiacDF %>%
+  wilcox.test(age ~ hospDeath, data=.)
+
+# -----------------------------------------------------------
+# Statistics for favourable/unfavourable neurological outcome
+#
+cardiacDF %>%
+  group_by(favOutcome3MonthCpc1_2_1) %>%
+  summarise( n   = n(),
+             med = median(age),
+             q1  = quantile(age, prob=0.25),
+             q3  = quantile(age, prob=0.75))
+
+# -----------------------------------------------------------
+# Test for favourable/unfavourable neurological outcome
+#
+cardiacDF %>%
+  wilcox.test(age ~ favOutcome3MonthCpc1_2_1, data=.)
+```
+
+**(d) As well as death in hospital (`hospDeath`), the study data include a column that identifies whether or not the patient died in ICU (`icuDeath`). So, there are three possibilities for each patient, namely, (i) they survive to discharge, (ii) they survive ICU but die in hospital, (iii) they die in ICU.**  
+
+<br>
+
+**Add code to `solution1.R` that creates a new variable called `outcome` that takes the values 0, 1, 2 to denote the three cases (i to iii).** 
+
+```{r}
+# -----------------------------------------------
+# add an outcome column to cardiacDF
+# 0 = survive to discharge
+# 1 = die in hospital after ICU
+# 2 = die in ICU
+#
+cardiacDF %>%
+  mutate( outcome = hospDeath + icuDeath ) -> cardiacDF
+```
+
+**Plot histograms of the length of stay in ICU faceted by `outcome`.**
+
+```{r}
+# -----------------------------------------------
+# Histogram of ICU length of stay
+#
+cardiacDF %>%
+  ggplot( aes(x = icuStay)) +
+  geom_histogram( fill = "steelblue") +
+  facet_grid( outcome ~ .) +
+  labs( x     = "length of stay in ICU (days)",
+        title = "Longer time in ICU for those that survive")
+```
+
+**For each level of `outcome` find the median and quartiles of the length of stay in ICU.**  
+
+```{r}
+# -----------------------------------------------------------
+# Statistics for outcome groups
+#
+cardiacDF %>%
+  group_by(outcome) %>%
+  summarise( n   = n(),
+             med = median(icuStay),
+             q1  = quantile(icuStay, prob=0.25),
+             q3  = quantile(icuStay, prob=0.75))
+```
+
+**Perform a non-parametric comparison of the length of stay in ICU across the three levels of `outcome` using the Kruskal-Wallis test.** 
+
+```{r}
+# -----------------------------------------------------------
+# kruskal-wallis test for outcome groups
+#
+cardiacDF %>%
+  kruskal.test( icuStay ~ outcome, data=.)
+```
+
+**(e) Lactate (lactic acid minus one proton) is a by-product of glucose metabolism and can build up in muscles during extreme exercise causing cramp. Lactate is still created under less extreme conditions, but a healthy person will clear it via the liver and kidneys. The system for clearing lactate can fail when someone is extremely ill and consequently lactate levels in the blood will rise. For this reason, lactate is measured in ICUs as a general indicator of severity of illness. The study data contain a variable `lactIcuAdm` that gives the lactate measured at the time of admission to the ICU.**  
+
+**Calculate summary statistics, plot graphs and perform statistical tests to investigate whether or not lactate as measured in the blood sample taken at admission relates to the three levels of the `outcome` variable.**
+
+```{r}
+# -----------------------------------------------
+# Histogram of lactate at admission
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm)) +
+  geom_histogram( fill = "steelblue") +
+  facet_grid( outcome ~ .) +
+  labs( x     = "Lactate level on admission",
+        title = "Higher lactate in those that die")
+
+# -----------------------------------------------------------
+# Statistics for outcome groups
+#
+cardiacDF %>%
+  group_by(outcome) %>%
+  summarise( n   = n(),
+             med = median(lactIcuAdm),
+             q1  = quantile(lactIcuAdm, prob=0.25),
+             q3  = quantile(lactIcuAdm, prob=0.75))
+
+# -----------------------------------------------------------
+# kruskal-wallis test for outcome groups
+#
+cardiacDF %>%
+  kruskal.test( lactIcuAdm ~ outcome, data=.)
+```
+
+lactate levels are lowest in those that survive to discharge suggesting that they start healthier or rather, less sick.  
+
+**Make a scatter plot of length of stay in ICU (y-axis) against lactate (x-axis). Add a smoother to the plot, either linear or lowess, as you feel is appropriate.**
+
+```{r}
+# ------------------------------------------------
+# scatter plot of lactate vs icu stay
+# with lowess smoother
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm, y = icuStay)) +
+  geom_point() +
+  geom_smooth() +
+  labs( x     = "Lactate level on admission",
+        y     = "Length of ICU stay (days)",
+        title = "Association between lactate and ICU stay is unclear")
+```
+
+```{r}
+# ------------------------------------------------
+# scatter plot of lactate vs icu stay
+# with regression line
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm, y = icuStay)) +
+  geom_point() +
+  geom_smooth( method="lm") +
+  labs( x     = "Lactate level on admission",
+        y     = "Length of ICU stay (days)",
+        title = "Slight decline in ICU stay with higher lactate")
+```
+
+The impression from both smoothers is similar but given the lack of any obvious linearity, I would opt for the lowess curve.
+
+**Repeat the scatter plot but with both the x and y axes showing a log scale.**  
+
+```{r}
+# ------------------------------------------------
+# scatter plot of lactate vs icu stay
+# with lowess smoother
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm, y = icuStay)) +
+  geom_point() +
+  geom_smooth() +
+  scale_x_log10() + 
+  scale_y_log10() +
+  labs( x        = "Lactate level on admission",
+        y        = "Length of ICU stay (days)",
+        title    = "Lactate and ICU stay",
+        subtitle = "Hint of a quadratic association")
+```
+
+```{r}
+# ------------------------------------------------
+# scatter plot of lactate vs icu stay
+# with regression line
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm, y = icuStay)) +
+  geom_point() +
+  geom_smooth( method="lm") +
+  scale_x_log10() + 
+  scale_y_log10() +
+  labs( x        = "Lactate level on admission",
+        y        = "Length of ICU stay (days)",
+        title    = "Lactate and ICU stay",
+        subtitle = "Decline in ICU stay with increased lactate")
+```
+
+log scales seem to me to be better. Again there is not much to choose between lowess and a regression line. The choice will depend on your prior opinion in the likelihood that the pattern really is quadratic.
+
+**Use facets to produce three scatter plots that show stay in ICU by lactate for each of the levels of `outcome`.**  
+
+```{r}
+# ------------------------------------------------
+# scatter plot of lactate vs icu stay
+# faceted by outcome
+#
+cardiacDF %>%
+  ggplot( aes(x = lactIcuAdm, y = icuStay)) +
+  geom_point() +
+  geom_smooth( method="lm") +
+  scale_x_log10() + 
+  scale_y_log10() +
+  facet_grid( outcome ~ . ) +
+  labs( x        = "Lactate level on admission",
+        y        = "Length of ICU stay (days)",
+        title    = "Lactate and ICU stay",
+        subtitle = "Apparent interaction")
+```
+
+Linearity looks better in the faceted plot. Amongst the survivors (outcome=0) the higher the lactate the longer the stay, as one would expect. Amongst those that die on the ICU (outcome=2), high lactate mean a shorter stay, that is the very sick patients die quicker. This might explain the quadratic appearance of the combined plot that was detected by the lowess line.  
+
