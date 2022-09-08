@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>What Next</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="John Thompson" />
+    <script src="slides_what_next_files/header-attrs/header-attrs.js"></script>
+    <link href="slides_what_next_files/panelset/panelset.css" rel="stylesheet" />
+    <script src="slides_what_next_files/panelset/panelset.js"></script>
+    <script src="slides_what_next_files/xaringanExtra-webcam/webcam.js"></script>
+    <script id="xaringanExtra-webcam-options" type="application/json">{"width":"200","height":"200","margin":"1em"}</script>
+    <link href="slides_what_next_files/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="slides_what_next_files/tile-view/tile-view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="my_theme.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# What Next
+]
+.subtitle[
+## Data Analysis with R and the tidyverse
+]
+.author[
+### John Thompson
+]
+.institute[
+### University of Leicester
+]
+.date[
+### 21st August 2022
+]
+
+---
+
+
+
+
+
+
+
+
+## Milestones in learning the tidyverse
+
+### Introductory  
+
+Use of the tidyverse packages and the pipe without writing your own functions  
+
+### Intermediate
+
+Adding user-written functions for efficiency, code organisation and coding new methods. Working with list columns in a tibble.  
+
+shiny for dashboards and interactive graphics  
+
+### Advanced
+
+Larger projects: analysis workflows, version control, collaboration, databases, package development, parallel processing, the two language problem
+
+---
+## Introductory: Sessions 2 and 3
+
+### Tidy Format
+
+Organising data in rectangular tables  
+
+long and wide tables, conversion with **pivot_wider()** and **pivot_longer()**
+
+joining tables, with **left_join()**, **right_join()**, **full_join()**, etc.  
+
+### Factors
+
+defining levels and labels, 
+
+### Pretty tables
+
+the **flextable** package
+
+---
+## Introductory: Sessions 2 and 3
+
+### More ggplot2 
+
+themes, colours, error bars, plotting factors
+
+
+### Missing values
+
+their impact on computations
+
+### Statistical models
+
+base R model fitting with a pipe  
+
+the **broom** package  
+
+---
+## Introductory: Sessions 2 and 3
+
+### Working with lists  
+
+list as collections of data objects  
+
+extracting items from a list by name (**$**) or by position (**[[ ]]**)   
+
+saving metadata as attributes
+
+### Programming tools
+
+repeating a calculation in a loop, accumulating results  
+
+conditional computation with **ifelse()**  
+
+blocks of code in a pipe with **{ }**,  more on the dot in a pipe
+---
+## Intermediate: writing a function
+
+writing your own function  
+
+
+```r
+# ---------------------------------------------
+# function for the width of an 80% interval
+# x is a numeric vector (not checked)
+#
+range80 &lt;- function(x) {
+  lb &lt;- quantile(x, prob = 0.1)
+  ub &lt;- quantile(x, prob = 0.9)
+  range &lt;- ub - lb
+  return(range)
+}
+```
+
+---
+## Intermediate: using your own function
+
+using your own function  
+
+
+```r
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %&gt;%
+  summarise( n = n(),
+             m = mean(sbp),
+             r = range80(sbp) ) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 1 × 3
+##       n     m     r
+##   &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     8  133.    26
+```
+
+---
+## Repeating a calculation
+
+finding the 80% range of more than one column  
+
+
+```r
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %&gt;%
+  summarise( across( age:sbp, range80)) %&gt;%
+  print()
+```
+
+```
+## # A tibble: 1 × 2
+##     age   sbp
+##   &lt;dbl&gt; &lt;dbl&gt;
+## 1  42.9    26
+```
+
+---
+## Replacing loops
+
+This code comes from session 3 of the introductory course calculates 100 bootstrap medians
+
+
+```r
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) -&gt; sbpDF
+
+# data frame for saving 100 bootstrap medians
+tibble( index  = 1:100,
+        median = rep(NA, 100)) %&gt;%
+  print() -&gt; resultsDF
+
+# seed for reproducibility
+set.seed(982)
+
+# repeat the calculation 100 times
+for( i in 1:100 ) {
+  sbpDF %&gt;%
+    slice_sample(n = 8, replace = TRUE) %&gt;%
+    summarise( m = median(sbp)) %&gt;%
+    { .$m }  -&gt; resultsDF$median[i]
+}
+```
+
+---
+## Repeating without loops
+
+place the contents of the loop in a function and use **rerun()**
+
+.panelset[
+.panel[.panel-name[setup]
+
+```r
+# the data
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) -&gt; sbpDF
+
+# the function
+boot_median &lt;- function(df) {
+  df %&gt;%
+    slice_sample(n = 8, replace = TRUE) %&gt;%
+    summarise( m = median(sbp)) %&gt;%
+    { .$m }  %&gt;%
+    return()
+}
+```
+]
+.panel[.panel-name[repeat in a pipe]
+
+```r
+# seed for reproducibility
+set.seed(982)
+
+# tibble containing 3 bootstrap medians
+rerun(5, boot_median(sbpDF) ) %&gt;%
+  flatten_dbl() %&gt;%
+  as_tibble_col("median") %&gt;%
+  mutate( index = 1:5)
+```
+
+```
+## # A tibble: 5 × 2
+##   median index
+##    &lt;dbl&gt; &lt;int&gt;
+## 1   125      1
+## 2   135      2
+## 3   138.     3
+## 4   135      4
+## 5   138.     5
+```
+]
+]
+
+---
+## the purrr package
+
+**purrr** has many functions for repeating computations  
+
+**map()**, **map2()**, **pmap()**, etc.  
+
+&lt;br&gt;
+
+- no need for loops  
+- no need to break the flow of a piped analysis when repeating a computation  
+- testing is easier  
+- code is shorter and easier to read  
+
+---
+## list columns
+
+.panelset[
+.panel[.panel-name[data]
+
+```r
+tibble( id  = 1:8,
+        sex = c("m", "m", "f", "f", "f", "m", "f", "m"),
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %&gt;%
+  mutate( sex = factor(sex, levels = c("m", "f"),
+                       labels = c("male", "female"))) %&gt;%
+  print()   -&gt; sbpDF
+```
+
+```
+## # A tibble: 8 × 4
+##      id sex      age   sbp
+##   &lt;int&gt; &lt;fct&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1     1 male      37   135
+## 2     2 male      23   125
+## 3     3 female    62   120
+## 4     4 female    55   115
+## 5     5 female    42   155
+## 6     6 male      71   140
+## 7     7 female    19   140
+## 8     8 male      38   135
+```
+]
+.panel[.panel-name[nest]
+
+```r
+sbpDF %&gt;%
+  group_by( sex ) %&gt;%
+  nest() 
+```
+
+```
+## # A tibble: 2 × 2
+## # Groups:   sex [2]
+##   sex    data            
+##   &lt;fct&gt;  &lt;list&gt;          
+## 1 male   &lt;tibble [4 × 3]&gt;
+## 2 female &lt;tibble [4 × 3]&gt;
+```
+]
+.panel[.panel-name[fit models]
+
+```r
+# function to fit a model
+myModel &lt;- function(df) {
+  model = lm( sbp ~ age, data = df)
+  return(model)
+}
+
+sbpDF %&gt;%
+  group_by( sex ) %&gt;%
+  nest() %&gt;%
+  mutate( model = map(data, myModel))
+```
+
+```
+## # A tibble: 2 × 3
+## # Groups:   sex [2]
+##   sex    data             model 
+##   &lt;fct&gt;  &lt;list&gt;           &lt;list&gt;
+## 1 male   &lt;tibble [4 × 3]&gt; &lt;lm&gt;  
+## 2 female &lt;tibble [4 × 3]&gt; &lt;lm&gt;
+```
+]
+.panel[.panel-name[unnest]
+
+```r
+library(broom)
+
+sbpDF %&gt;%
+  group_by( sex ) %&gt;%
+  nest() %&gt;%
+  mutate( model = map(data, myModel)) %&gt;%
+  mutate( coef  = map(model, tidy)) %&gt;%
+  select( sex, coef) %&gt;%
+  unnest( coef)
+```
+
+```
+## # A tibble: 4 × 6
+## # Groups:   sex [2]
+##   sex    term        estimate std.error statistic p.value
+##   &lt;fct&gt;  &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+## 1 male   (Intercept)  122.        4.84      25.3  0.00156
+## 2 male   age            0.271     0.106      2.56 0.125  
+## 3 female (Intercept)  159.       25.7        6.20 0.0250 
+## 4 female age           -0.606     0.542     -1.12 0.380
+```
+]
+]
+---
+## Shiny dashboards
+
+### A gallery of examples https://shiny.rstudio.com/gallery/
+
+---
+## Advanced Topics
+
+Methods associated to scaling up to larger projects, e.g. funded research, PhD, collaborative research, commercial data analysis
+
+### Analysis Workflows
+
+large projects have many components that feed into one another. The **targets** package keeps track of the different components and how they interact.  
+
+---
+## Advanced Topics
+
+### Version control
+
+**git** keep tracks of the changes to your code as it develops and enables you to revert to earlier versions.
+
+The **renv** package enable you to control the version number of the packages that you use.  
+
+### Collaboration
+
+**github** enables the sharing of code and integrates with **git**. Any of the many cloud data repositories will enable data sharing.  
+
+---
+## Advanced Topics
+
+### Databases
+
+Efficient ways of storing large amounts of data. **duckdb** stores data by variable and is good for data analysis. It integrates well into R.  
+
+### Parallel Processing
+
+Important for computationally intensive analyses, such as MCMC. The **future** package. **furrr** is a parallel version of **purrr**.  
+
+---
+## Advanced Topics
+ ### Package development
+
+Collecting your functions into packages. Initially for internal use, but perhaps also for wider distribution. Documentation and testing.
+
+### Two language problem
+
+R is easy to use and flexible, but it is relatively slow. Behind the scenes, the tidyverse makes use of a lot of C code. **Rcpp** is a package that enables C++ code to be integrated into R.  
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%",
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

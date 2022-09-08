@@ -45,18 +45,20 @@ xaringanExtra::use_webcam()
 xaringanExtra::use_tile_view()
 ```
 
-## The Pipe
+## Vectors
 
-Convert Object x into Object y
+collections of numbers, characters or booleans
 .panelset[
-.panel[.panel-name[Step by Step]
-```{r eval=FALSE}
-a <- fun1(x)
-b <- fun2(a)
-y <- fun3(b)
+.panel[.panel-name[creation]
+```{r}
+v <- c(2.3, 4.6, 1.9)
+print(v)
 ```
 
-workspace becomes cluttered with intermediate objects
+```{r}
+v <- c("Jack", "Ali", "Margaret", "Jane")
+print(v)
+```
 ]
 .panel[.panel-name[In one step]
 ```{r eval=FALSE}

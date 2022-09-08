@@ -1,0 +1,466 @@
+---
+title: "Data Analysis with R and the tidyverse"
+subtitle: "Lecture 2"
+author: "John Thompson"
+institute: "University of Leicester"
+date: "21st August 2022"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css, my_theme.css]
+    nature:
+      slideNumberFormat: "%current%"
+      highlightStyle: github
+      highlightLines: true
+      ratio: "16:9"
+      countIncrementalSlides: true
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(xaringanthemer)
+style_duo_accent(
+  primary_color = "#4d90c4",
+  secondary_color = "#FF961C",
+  inverse_header_color = "#FFFFFF"
+)
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  hiline = TRUE
+)
+```
+
+```{r xaringan-panelset, echo=FALSE}
+xaringanExtra::use_panelset()
+xaringanExtra::use_webcam()
+xaringanExtra::use_tile_view()
+```
+
+## Vectors
+
+collections of numbers, characters or booleans
+.panelset[
+.panel[.panel-name[creation]
+```{r}
+v <- c(2.3, 4.6, 1.9)
+print(v)
+```
+
+```{r}
+v <- c("Jack", "Ali", "Margaret", "Jane")
+print(v)
+```
+]
+.panel[.panel-name[Square brackets]
+```{r}
+v[3]
+```
+
+```{r}
+v[c(1,4)]
+```
+]
+]
+---
+## Tidy data
+
+<br>
+
+- The `tidyverse` works best when data are stored in `tidy format`. 
+
+- https://www.jstatsoft.org/article/view/v059i10. 
+
+- similar to the format used in relational databases.  
+
+- arrange data into tables (data frames or tibbles in R) so that,
+
+  - each row represents a different subject or observation    
+  - each column represents a different variable or measurement    
+  - data are not duplicated in different tables
+
+---
+## Wide and Long formats
+
+.panelset[
+.panel[.panel-name[wide]
+```{r}
+tibble( id           = 1:4,
+        age          = c(37, 23, 62, 55),
+        sbp_baseline = c(135, 120, 155, 140),
+        sbp_followup = c(125, 115, 140, 135)) %>%
+  print() -> wideDF
+```
+]
+.panel[.panel-name[Long]
+```{r}
+tibble( id    = rep(1:4, each=2),
+        visit = rep( c("baseline", "followup"), times=4),
+        age   = rep( c(37, 23, 62, 55), each=2),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  print() -> longDF
+```
+]
+.panel[.panel-name[Long to Wide]
+```{r}
+longDF %>%
+   pivot_wider( names_from  = visit, 
+                values_from = sbp   ) %>%
+   print()
+```
+]
+.panel[.panel-name[Wide to Long]
+```{r}
+wideDF %>%
+  pivot_longer( cols      = c(sbp_baseline, sbp_followup), 
+                names_to  = "visit", 
+                values_to = "sbp") %>%
+  print()
+```
+]
+.panel[.panel-name[neater]
+```{r}
+wideDF %>%
+  pivot_longer( cols      = c(sbp_baseline, sbp_followup), 
+                names_to  = "visit", 
+                values_to = "sbp") %>%
+  mutate( visit = str_replace(visit, "sbp_", "")) %>%
+  print()
+```
+]
+]
+---
+## Missing values
+
+.panelset[
+.panel[.panel-name[data]
+```{r}
+tibble( id  = 1:5,
+        sex = c("m", "m", "f", "f", "f"),
+        age = c( 45,  32,  57,  63,  23),
+        sbp = c(125, 130,  NA, 150, 135)) %>%
+  print()   -> sbpDF
+```
+]
+.panel[.panel-name[locate missing]
+```{r}
+sbpDF %>%
+  mutate( missing  = is.na(sbp),
+          measured = !is.na(sbp)) %>%
+  print()
+```
+]
+.panel[.panel-name[filter not missing]
+```{r}
+sbpDF %>%
+  filter( !is.na(sbp)) %>%
+  print()
+```
+]
+]
+---
+## Calculation with NA
+
+.panelset[
+.panel[.panel-name[data]
+```{r}
+tibble( id  = 1:5,
+        sex = c("m", "m", "f", "f", "f"),
+        age = c( 45,  32,  57,  63,  23),
+        sbp = c(125, 130,  NA, 150, 135)) %>%
+  print()   -> sbpDF
+```
+]
+.panel[.panel-name[stats]
+```{r}
+sbpDF %>%
+  summarise( n    = n(),
+             mAge = mean(age),
+             mSBP = mean(sbp)) %>%
+  print()
+```
+]
+.panel[.panel-name[filter]
+```{r}
+sbpDF %>%
+  filter( !is.na(sbp)) %>%
+  summarise( n    = n(),
+             mAge = mean(age),
+             mSBP = mean(sbp)) %>%
+  print()
+```
+]
+.panel[.panel-name[na.rm]
+```{r}
+sbpDF %>%
+  summarise( n    = n(),
+             mAge = mean(age, na.rm = TRUE),
+             mSBP = mean(sbp, na.rm = TRUE)) %>%
+  print()
+```
+]]
+---
+## Factors
+
+Variables with a finite set of possible values
+
+.panelset[
+.panel[.panel-name[data]
+```{r}
+sbpDF %>%
+  str()
+```
+]
+.panel[.panel-name[to factor]
+```{r}
+sbpDF %>%
+  mutate( sex = factor(sex)) %>%
+  str() 
+```
+]
+.panel[.panel-name[terminology]
+Internally all factors are stored as numbers, 1, 2, etc.
+
+- **levels** ... values/words taken by the variable in the dataset  
+- **labels** ... values/words that you want to appear in R output  
+
+default: levels assigned alphabetically, labels=levels
+]
+.panel[.panel-name[full specification]
+```{r}
+# --- Convert sex from character to factor ----------------------
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  str()
+```
+]
+]
+---
+## flextable
+
+package **flextable** contains many functions for producing report quality tables
+
+it is not the only option.  
+
+`gt`, `huxtable`, `xtable` and `ztable` and many other packages do a similar job.
+
+table creation has two stages  
+
+- create a tibble containing the table contents  
+
+- use **flextable** to add headers and control the layout  
+
+---
+## flextable example 
+
+.panelset[
+.panel[.panel-name[data]
+```{r}
+tibble( id  = 1:5,
+        sex = c("m", "m", "f", "f", "f"),
+        age = c( 45,  32,  57,  63,  23),
+        sbp = c(125, 130,  NA, 150, 135)) %>%
+  print()   -> sbpDF
+```
+]
+.panel[.panel-name[contents]
+```{r}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  group_by(sex) %>%
+  summarise( meanAge = mean(age, na.rm=TRUE),
+             meanSBP = mean(sbp, na.rm=TRUE)) %>%
+  print()  -> tabDF
+```
+]
+.panel[.panel-name[default]
+```{r}
+library(flextable)
+
+tabDF %>%
+  flextable()
+```
+]
+.panel[.panel-name[prettier]
+```{r eval=FALSE}
+tabDF %>%
+  flextable() %>%
+  border_outer() %>%
+  set_header_labels(
+    meanAge = "mean age",
+    meanSBP = "mean SBP"
+  ) %>%
+  set_caption("Average age and SBP of mean and women") %>%
+  colformat_double(
+    j      = c( 2, 3),
+    digits = 1
+  )
+```
+]
+.panel[.panel-name[output]
+```{r echo=FALSE}
+tabDF %>%
+  flextable() %>%
+  border_outer() %>%
+  set_header_labels(
+    meanAge = "mean age",
+    meanSBP = "mean SBP"
+  ) %>%
+  set_caption("Average age and SBP of mean and women") %>%
+  colformat_double(
+    j      = c( 2, 3),
+    digits = 1
+  )
+```
+]
+.panel[.panel-name[refs]
+<br>
+- on-line book https://ardata-fr.github.io/flextable-book/  
+<br>
+- list of functions https://davidgohel.github.io/flextable/reference/index.html  
+<br>
+- gallery https://ardata.fr/en/flextable-gallery/  
+]
+]
+---
+## ggplot themes
+
+set of defaults for ggplot2  
+
+.panelset[
+.panel[.panel-name[standard]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point( size = 3 )
+```
+]
+.panel[.panel-name[theme_light]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point( size = 3 ) + 
+  theme_light()
+```
+]
+.panel[.panel-name[theme_dark]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point( size = 3 ) + 
+  theme_dark()
+```
+]
+.panel[.panel-name[ggthemes]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+library(ggthemes)
+
+sbpDF %>%
+  ggplot( aes(x = age, y = sbp)) +
+  geom_point( size = 3 ) +
+  theme_stata()
+```
+]
+]
+---
+## Adapting the theme
+
+.panelset[
+.panel[.panel-name[theme_classic]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  ggplot( aes(x = age, y = sbp, colour = sex)) +
+  geom_point( size = 3 ) +
+  theme_classic()
+```
+]
+.panel[.panel-name[adapt_code]
+```{r out.width = '600px',  fig.align='center', warning = FALSE, eval=FALSE}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  ggplot( aes(x = age, y = sbp, colour = sex)) +
+  geom_point( size = 3 ) +
+  scale_colour_manual(values = c("male" = "darkgreen", "female" = "orange")) +
+  theme_classic() +
+  theme( legend.position = c(0.1, 0.8) )
+```
+]
+.panel[.panel-name[adapt_output]
+```{r out.width = '600px', out.height = '400px',  fig.align='center', warning = FALSE, echo=FALSE}
+sbpDF %>%
+  mutate( sex = factor(sex, 
+                       levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  ggplot( aes(x = age, y = sbp, colour = sex)) +
+  geom_point( size = 3 ) +
+  scale_colour_manual(values = c("male" = "darkgreen", "female" = "orange")) +
+  theme_classic() +
+  theme( legend.position = c(0.1, 0.8) )
+```
+]
+]
+
+---
+## Error Bars
+
+.panelset[
+.panel[.panel-name[Long]
+```{r}
+tibble( id    = rep(1:4, each=2),
+        visit = rep( c("baseline", "followup"), times=4),
+        age   = rep( c(37, 23, 62, 55), each=2),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  print() -> longDF
+```
+]
+.panel[.panel-name[stats]
+```{r}
+longDF %>%
+  group_by(visit) %>%
+  summarise( n = n(),
+             m = mean(sbp),
+             s = sd(sbp))  %>%
+  mutate( se = s / sqrt(n),
+          lb = m - 1.96 * se,
+          ub = m + 1.96 * se) %>%
+  print() -> statDF
+```
+]
+.panel[.panel-name[error bars code]
+```{r eval=FALSE}
+statDF %>%
+  ggplot( aes(x=visit, y=m)) +
+  geom_point( size=4) +
+  geom_errorbar( aes(ymin=lb, ymax=ub), width=0.2) +
+  labs( y = "mean SBP") +
+  theme_light()
+```
+]
+.panel[.panel-name[plot]
+```{r out.width = '600px', out.height = '400px',  fig.align='center', warning = FALSE, echo=FALSE}
+statDF %>%
+  ggplot( aes(x=visit, y=m)) +
+  geom_point( size=4) +
+  geom_errorbar( aes(ymin=lb, ymax=ub), width=0.2) +
+  labs( y = "mean SBP") +
+  theme_light()
+```
+]
+]

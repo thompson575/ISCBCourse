@@ -1,0 +1,341 @@
+---
+title: "What Next"
+subtitle: "Data Analysis with R and the tidyverse"
+author: "John Thompson"
+institute: "University of Leicester"
+date: "21st August 2022"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css, my_theme.css]
+    nature:
+      slideNumberFormat: "%current%"
+      highlightStyle: github
+      highlightLines: true
+      ratio: "16:9"
+      countIncrementalSlides: true
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(xaringanthemer)
+style_duo_accent(
+  primary_color = "#4d90c4",
+  secondary_color = "#FF961C",
+  inverse_header_color = "#FFFFFF"
+)
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  hiline = TRUE
+)
+```
+
+```{r xaringan-panelset, echo=FALSE}
+xaringanExtra::use_panelset()
+xaringanExtra::use_webcam()
+xaringanExtra::use_tile_view()
+```
+
+## Milestones in learning the tidyverse
+
+### Introductory  
+
+Use of the tidyverse packages and the pipe without writing your own functions  
+
+### Intermediate
+
+Adding user-written functions for efficiency, code organisation and coding new methods. Working with list columns in a tibble.  
+
+shiny for dashboards and interactive graphics  
+
+### Advanced
+
+Larger projects: analysis workflows, version control, collaboration, databases, package development, parallel processing, the two language problem
+
+---
+## Introductory: Sessions 2 and 3
+
+### Tidy Format
+
+Organising data in rectangular tables  
+
+long and wide tables, conversion with **pivot_wider()** and **pivot_longer()**
+
+joining tables, with **left_join()**, **right_join()**, **full_join()**, etc.  
+
+### Factors
+
+defining levels and labels, 
+
+### Pretty tables
+
+the **flextable** package
+
+---
+## Introductory: Sessions 2 and 3
+
+### More ggplot2 
+
+themes, colours, error bars, plotting factors
+
+
+### Missing values
+
+their impact on computations
+
+### Statistical models
+
+base R model fitting with a pipe  
+
+the **broom** package  
+
+---
+## Introductory: Sessions 2 and 3
+
+### Working with lists  
+
+list as collections of data objects  
+
+extracting items from a list by name (**$**) or by position (**[[ ]]**)   
+
+saving metadata as attributes
+
+### Programming tools
+
+repeating a calculation in a loop, accumulating results  
+
+conditional computation with **ifelse()**  
+
+blocks of code in a pipe with **{ }**,  more on the dot in a pipe
+---
+## Intermediate: writing a function
+
+writing your own function  
+
+```{r}
+# ---------------------------------------------
+# function for the width of an 80% interval
+# x is a numeric vector (not checked)
+#
+range80 <- function(x) {
+  lb <- quantile(x, prob = 0.1)
+  ub <- quantile(x, prob = 0.9)
+  range <- ub - lb
+  return(range)
+}
+```
+
+---
+## Intermediate: using your own function
+
+using your own function  
+
+```{r}
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  summarise( n = n(),
+             m = mean(sbp),
+             r = range80(sbp) ) %>%
+  print()
+```
+
+---
+## Repeating a calculation
+
+finding the 80% range of more than one column  
+
+```{r}
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  summarise( across( age:sbp, range80)) %>%
+  print()
+```
+
+---
+## Replacing loops
+
+This code comes from session 3 of the introductory course calculates 100 bootstrap medians
+
+```{r eval=FALSE}
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) -> sbpDF
+
+# data frame for saving 100 bootstrap medians
+tibble( index  = 1:100,
+        median = rep(NA, 100)) %>%
+  print() -> resultsDF
+
+# seed for reproducibility
+set.seed(982)
+
+# repeat the calculation 100 times
+for( i in 1:100 ) {
+  sbpDF %>%
+    slice_sample(n = 8, replace = TRUE) %>%
+    summarise( m = median(sbp)) %>%
+    { .$m }  -> resultsDF$median[i]
+}
+```
+
+---
+## Repeating without loops
+
+place the contents of the loop in a function and use **rerun()**
+
+.panelset[
+.panel[.panel-name[setup]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+# the data
+tibble( id    = 1:8,
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) -> sbpDF
+
+# the function
+boot_median <- function(df) {
+  df %>%
+    slice_sample(n = 8, replace = TRUE) %>%
+    summarise( m = median(sbp)) %>%
+    { .$m }  %>%
+    return()
+}
+```
+]
+.panel[.panel-name[repeat in a pipe]
+```{r out.width = '600px',  fig.align='center', warning = FALSE}
+# seed for reproducibility
+set.seed(982)
+
+# tibble containing 3 bootstrap medians
+rerun(5, boot_median(sbpDF) ) %>%
+  flatten_dbl() %>%
+  as_tibble_col("median") %>%
+  mutate( index = 1:5)
+```
+]
+]
+
+---
+## the purrr package
+
+**purrr** has many functions for repeating computations  
+
+**map()**, **map2()**, **pmap()**, etc.  
+
+<br>
+
+- no need for loops  
+- no need to break the flow of a piped analysis when repeating a computation  
+- testing is easier  
+- code is shorter and easier to read  
+
+---
+## list columns
+
+.panelset[
+.panel[.panel-name[data]
+```{r}
+tibble( id  = 1:8,
+        sex = c("m", "m", "f", "f", "f", "m", "f", "m"),
+        age   = c(37, 23, 62, 55, 42, 71, 19, 38),
+        sbp   = c(135, 125, 120, 115, 155, 140, 140, 135)) %>%
+  mutate( sex = factor(sex, levels = c("m", "f"),
+                       labels = c("male", "female"))) %>%
+  print()   -> sbpDF
+```
+]
+.panel[.panel-name[nest]
+```{r}
+sbpDF %>%
+  group_by( sex ) %>%
+  nest() 
+```
+]
+.panel[.panel-name[fit models]
+```{r}
+# function to fit a model
+myModel <- function(df) {
+  model = lm( sbp ~ age, data = df)
+  return(model)
+}
+
+sbpDF %>%
+  group_by( sex ) %>%
+  nest() %>%
+  mutate( model = map(data, myModel))
+```
+]
+.panel[.panel-name[unnest]
+```{r}
+library(broom)
+
+sbpDF %>%
+  group_by( sex ) %>%
+  nest() %>%
+  mutate( model = map(data, myModel)) %>%
+  mutate( coef  = map(model, tidy)) %>%
+  select( sex, coef) %>%
+  unnest( coef)
+```
+]
+]
+---
+## Shiny dashboards
+
+### A gallery of examples https://shiny.rstudio.com/gallery/
+
+---
+## Advanced Topics
+
+Methods associated to scaling up to larger projects, e.g. funded research, PhD, collaborative research, commercial data analysis
+
+### Analysis Workflows
+
+large projects have many components that feed into one another. The **targets** package keeps track of the different components and how they interact.  
+
+---
+## Advanced Topics
+
+### Version control
+
+**git** keep tracks of the changes to your code as it develops and enables you to revert to earlier versions.
+
+The **renv** package enable you to control the version number of the packages that you use.  
+
+### Collaboration
+
+**github** enables the sharing of code and integrates with **git**. Any of the many cloud data repositories will enable data sharing.  
+
+---
+## Advanced Topics
+
+### Databases
+
+Efficient ways of storing large amounts of data. **duckdb** stores data by variable and is good for data analysis. It integrates well into R.  
+
+### Parallel Processing
+
+Important for computationally intensive analyses, such as MCMC. The **future** package. **furrr** is a parallel version of **purrr**.  
+
+---
+## Advanced Topics
+ ### Package development
+
+Collecting your functions into packages. Initially for internal use, but perhaps also for wider distribution. Documentation and testing.
+
+### Two language problem
+
+R is easy to use and flexible, but it is relatively slow. Behind the scenes, the tidyverse makes use of a lot of C code. **Rcpp** is a package that enables C++ code to be integrated into R.  
+
+
